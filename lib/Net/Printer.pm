@@ -11,10 +11,10 @@
 #   without having to build a pipe to lpr or lp.  The goal of this
 #   module is to provide a robust way of printing to a line printer
 #   and provide immediate feedback as to if it were successfully
-#   spooled or not. 
-# 
+#   spooled or not.
+#
 # Please see the COPYRIGHT file for important information on
-# distribution terms  
+# distribution terms
 #
 ########################################################################
 
@@ -39,13 +39,13 @@ our @ISA = qw(Exporter);
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 
-# This allows declaration	use Net::Printer ':all';
+# This allows declaration        use Net::Printer ':all';
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 #our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw( printerror printfile printstring queuestatus );
-our $VERSION = '1.02';
+our $VERSION = '1.03';
 
 # ----------------------------------------------------------------------
 # Public Methods
@@ -95,88 +95,87 @@ sub printfile {
 
     # Are we being called with a file?
     $self->{filename} = $pfile
-	if ( $pfile );
+        if ( $pfile );
 
     $self->_logDebug( sprintf( "Filename is %s",
-			       $self->{filename} ) );
+                               $self->{filename} ) );
 
     # File valid?
     if ( !( $self->{filename} ) ||
-	 ( ! -e $self->{filename} )) {
+         ( ! -e $self->{filename} )) {
 
-	$self->_lpdFatal( sprintf( "Given filename (%s) not valid",
-				   $self->{filename} ) );
-	
-	return undef;
+        $self->_lpdFatal( sprintf( "Given filename (%s) not valid",
+                                   $self->{filename} ) );
 
-    } 
+        return undef;
+
+    }
     elsif ( uc( $self->{lineconvert} ) eq "YES") {
-	$dfile = $self->_nlConvert();
-    } 
+        $dfile = $self->_nlConvert();
+    }
     else {
-	$dfile = $self->{filename};
-    } 
+        $dfile = $self->{filename};
+    }
 
-    $self->_logDebug( sprintf("Real Data File    %s", 
-			      $dfile) );
+    $self->_logDebug( sprintf("Real Data File    %s",
+                              $dfile) );
 
     # Create Control File
     my @files = $self->_fileCreate();
 
-    $self->_logDebug( sprintf( "Real Control File %s", 
-			       $files[0]   ) );
-    $self->_logDebug( sprintf( "Fake Data    File %s", 
-			       $files[1] ) );
+    $self->_logDebug( sprintf( "Real Control File %s",
+                               $files[0]   ) );
+    $self->_logDebug( sprintf( "Fake Data    File %s",
+                               $files[1] ) );
     $self->_logDebug( sprintf( "Fake Control File %s", 
-			       $files[2] ) );
+                               $files[2] ) );
 
     unless ( -e $files[0] ) {
-	$self->_lpdFatal( "Could not create control file\n" );
-	return undef;
+        $self->_lpdFatal( "Could not create control file\n" );
+        return undef;
     }
 
     # Open Connection to remote printer
     my $sock = $self->_socketOpen();
 
     if ( $sock ) {
-	$self->{socket} = $sock;
+        $self->{socket} = $sock;
     }
     else {
-	$self->_lpdFatal( "Could not connect to printer: $!\n" );
-	return undef;
+        $self->_lpdFatal( "Could not connect to printer: $!\n" );
+        return undef;
     }
 
     my $resp = $self->_lpdInit();
 
     unless ( $resp ) {
-	
-	$self->_lpdFatal( sprintf( "Printer %s on %s not ready!\n",
-				   $self->{printer},
-				   $self->{server} ) );
-	
-	return undef;
+
+        $self->_lpdFatal( sprintf( "Printer %s on %s not ready!\n",
+                                   $self->{printer},
+                                   $self->{server} ) );
+
+        return undef;
 
     }
-    
+
     $resp = $self->_lpdSend( $files[0],
-			     $dfile,
-			     $files[2],
-			     $files[1] );
+                             $dfile,
+                             $files[2],
+                             $files[1] );
 
     unless ( $resp ) {
 
-	$self->_lpdFatal( "Error Occured sending data to printer\n" );
-			  
-	return undef;
+        $self->_lpdFatal( "Error Occured sending data to printer\n" );
+        return undef;
 
     }
 
     # Clean up
     $self->{socket}->shutdown(2);
-    
+
     unlink $files[0];
     unlink $dfile
-	if ( uc( $self->{lineconvert} ) eq "YES" );
+        if ( uc( $self->{lineconvert} ) eq "YES" );
 
     return 1;
 
@@ -206,9 +205,8 @@ sub printstring {
 
     unless ($fh) {
 
-	$self->_lpdFatal( "Could not open $tmpfile: $!\n" );
-
-	return undef;
+        $self->_lpdFatal( "Could not open $tmpfile: $!\n" );
+        return undef;
 
     }
 
@@ -217,12 +215,12 @@ sub printstring {
 
     if ( $self->printfile( $tmpfile ) ) {
 
-	unlink $tmpfile;
-	return 1;
-	
-    } 
+        unlink $tmpfile;
+        return 1;
+
+    }
     else {
-	return undef;
+        return undef;
     }
 
 } # printstring()
@@ -250,54 +248,54 @@ sub queuestatus {
     my $sock = $self->_socketOpen();
 
     if ($sock) {
-	$self->{socket} = $sock;
+        $self->{socket} = $sock;
     }
     else {
-	
-	push( @qstatus,
-	      sprintf( "%s\@%s: Could not connect to printer: $!\n",
-		       $self->{printer},
-		       $self->{server} ) );
 
-	return @qstatus;
+        push( @qstatus,
+              sprintf( "%s\@%s: Could not connect to printer: $!\n",
+                       $self->{printer},
+                       $self->{server} ) );
+
+        return @qstatus;
 
     }
 
     # Note that we want to handle remote lpd response ourselves
     $self->_lpdCommand( sprintf("%c%s\n",
-				4,
-				$self->{printer}),
-			0);
+                                4,
+                                $self->{printer}),
+                        0);
 
     # Read response from server and format
     eval {
-	
-	local $SIG{ALRM} = sub { die "timeout\n" };
 
-	alarm 15;
-	$sock = $self->{socket};
-	while (<$sock>) {
+        local $SIG{ALRM} = sub { die "timeout\n" };
 
-	    s/($_)/$self->{printer}\@$self->{server}: $1/;
-	    push ( @qstatus, $_ );
+        alarm 15;
+        $sock = $self->{socket};
+        while (<$sock>) {
 
-	}
-	alarm 0;
+            s/($_)/$self->{printer}\@$self->{server}: $1/;
+            push ( @qstatus, $_ );
 
-	1;
+        }
+        alarm 0;
+
+        1;
 
     };
 
     if ($@) {
 
-	push ( @qstatus,
-	       sprintf( "%s\@%s: Timed out getting status from remote printer\n",
-			$self->{printer},
-			$self->{server} ) )
-	    if ( $@ =~ /timeout/ );
-	
+        push ( @qstatus,
+               sprintf( "%s\@%s: Timed out getting status from remote printer\n",
+                        $self->{printer},
+                        $self->{server} ) )
+            if ( $@ =~ /timeout/ );
+
     }
-    
+
     # Clean up
     $self->{socket}->shutdown(2);
 
@@ -332,9 +330,9 @@ sub _logDebug {
     my @a = caller(1);
 
     printf( "DEBUG-> %-32s: %s\n",
-	    $a[3],
-	    $msg )
-	if ( uc( $self->{debug} ) eq "YES" );
+            $a[3],
+            $msg )
+        if ( uc( $self->{debug} ) eq "YES" );
 
 } # _logDebug()
 
@@ -355,18 +353,18 @@ sub _lpdFatal {
 
     my $self = shift;
     my $msg  = shift;
-    
+
     $msg            =~ s/\n//;
-    
+
     my @a           = caller();
 
     my $errstr      =  sprintf( "ERROR:%s[%d]: %s",
-				$a[0],
-				$a[2],
-				$msg );
+                                $a[0],
+                                $a[2],
+                                $msg );
 
-    $self->{errstr} =  $errstr;   
- 
+    $self->{errstr} =  $errstr;
+
     carp "$errstr\n";
     return 1;
 
@@ -394,12 +392,12 @@ sub _tmpfile {
     my $self = shift;
 
     # try new temporary filenames until we get one that didn't already
-    # exist 
+    # exist
     do { $name = tmpnam() } until $fh = IO::File->new($name,
-						      O_RDWR|O_CREAT|O_EXCL); 
+                                                      O_RDWR|O_CREAT|O_EXCL);
 
     $fh->close();
-    
+
     return $name;
 
 } # _tmpfile()
@@ -421,7 +419,7 @@ sub _tmpfile {
 sub _nlConvert {
 
     my $self  = shift;
- 
+
     $self->_logDebug( "invoked ... " );
 
     # Open files
@@ -430,23 +428,22 @@ sub _nlConvert {
     my $ofh   = FileHandle->new( "$ofile"   );
     my $nfh   = FileHandle->new( "> $nfile" );
 
-
     unless ( $ofh ) {
-	$self->_logDebug ( "Cannot open $ofile: $!\n" );
-	return undef;
+        $self->_logDebug ( "Cannot open $ofile: $!\n" );
+        return undef;
     }
 
     unless ( $nfh ) {
-	$self->_logDebug ( "Cannot open $nfile: $!\n" );
-	return undef;
+        $self->_logDebug ( "Cannot open $nfile: $!\n" );
+        return undef;
     }
 
     while (<$ofh>) {
 
-	s/\n/\n\r/;
-	print $nfh $_;
+        s/\n/\n\r/;
+        print $nfh $_;
 
-    } # while ($ofh) 
+    } # while ($ofh)
 
     # Clean up
     $ofh->close();
@@ -477,26 +474,26 @@ sub _socketOpen {
     # See if user wants rfc1179 compliance
     if ( uc( $self->{rfc1179} ) eq "NO" ) {
 
-	$sock = IO::Socket::INET->new(Proto    => 'tcp',
-				      PeerAddr => $self->{server},
-				      PeerPort => $self->{port});
-	
-    } 
-    else {
-
-	# RFC 1179 says "source port be in the range 721-731"
-	foreach my $p ( 721 .. 731 ) {
-
-	    $sock = IO::Socket::INET->new( PeerAddr  => $self->{server},
-					   PeerPort  => $self->{port},
-					   Proto     => 'tcp',
-					   LocalPort => $p ) 
-		and last;
-
-	} # Iterate through ports
+        $sock = IO::Socket::INET->new(Proto    => 'tcp',
+                                      PeerAddr => $self->{server},
+                                      PeerPort => $self->{port});
 
     }
-    
+    else {
+
+        # RFC 1179 says "source port be in the range 721-731"
+        foreach my $p ( 721 .. 731 ) {
+
+            $sock = IO::Socket::INET->new( PeerAddr  => $self->{server},
+                                           PeerPort  => $self->{port},
+                                           Proto     => 'tcp',
+                                           LocalPort => $p )
+                and last;
+
+        } # Iterate through ports
+
+    }
+
     return $sock;
 
 } # _socketOpen()
@@ -510,7 +507,7 @@ sub _socketOpen {
 # Parameters:
 #
 #   none
-#   
+#
 # Returns:
 #
 #   *Array containing following elements:*
@@ -534,11 +531,11 @@ sub _fileCreate {
     $chash{'3J'} = $self->{filename};
     $chash{'4C'} = $myname;
     $chash{'5f'} = sprintf("dfA%03d%s",
-			   $snum,
-			   $myname);
+                           $snum,
+                           $myname);
     $chash{'6U'} = sprintf("cfA%03d%s",
-			   $snum,
-			   $myname);
+                           $snum,
+                           $myname);
     $chash{'7N'} = $self->{filename};
 
     my $cfile = $self->_tmpfile();
@@ -546,24 +543,24 @@ sub _fileCreate {
 
     unless ($cfh) {
 
-	$self->_logDebug( "_fileCreate:Could not create file $cfile: $!" );
-	return undef;
+        $self->_logDebug( "_fileCreate:Could not create file $cfile: $!" );
+        return undef;
 
     } # if we didn't get a proper filehandle
 
     foreach my $key ( sort keys %chash ) {
 
-	$_        = $key;
+        $_        = $key;
 
-	s/(.)(.)/$2/g;
+        s/(.)(.)/$2/g;
 
-	my $ccode = $_;
+        my $ccode = $_;
 
-	printf $cfh ( "%s%s\n",
-		      $ccode,
-		      $chash{$key} );
+        printf $cfh ( "%s%s\n",
+                      $ccode,
+                      $chash{$key} );
 
-    } # foreach $key ( sort keys %chash ) 
+    } # foreach $key ( sort keys %chash )
 
     return ( $cfile, $chash{'5f'}, $chash{'6U'} );
 
@@ -594,41 +591,41 @@ sub _lpdCommand {
     my $cmd  = shift;
     my $gans = shift;
 
-    $self->_logDebug( sprintf ( "Sending %s", 
-				$cmd ) );
+    $self->_logDebug( sprintf ( "Sending %s",
+                                $cmd ) );
 
     $self->{socket}->send( $cmd );
 
     if ( $gans ) {
 
-	# We wait for a response
-	eval {
+        # We wait for a response
+        eval {
 
-	    local $SIG{ALRM} = sub { die "timeout\n" };
+            local $SIG{ALRM} = sub { die "timeout\n" };
 
-	    alarm 5;
-	    $self->{socket}->recv( $response, 1024)
-		or die "recv: $!\n";
+            alarm 5;
+            $self->{socket}->recv( $response, 1024)
+                or die "recv: $!\n";
 
-	    1;
+            1;
 
-	};
+        };
 
-	alarm 0;
+        alarm 0;
 
-	if ($@) {
+        if ($@) {
 
-	    if ($@ =~ /timeout/) {
-		$self->_logDebug( "Timed out sending command" );
-		return undef;
-	    }
+            if ($@ =~ /timeout/) {
+                $self->_logDebug( "Timed out sending command" );
+                return undef;
+            }
 
-	}
+        }
 
-	$self->_logDebug( sprintf( "Got back :%s:", 
-				   $response) );
+        $self->_logDebug( sprintf( "Got back :%s:",
+                                   $response) );
 
-	return $response;
+        return $response;
 
     } # if ($gans)
 
@@ -664,24 +661,24 @@ sub _lpdInit {
     $self->_logDebug( "Return code is $retcode" );
 
     if ( ( $retcode =~ /\d/ ) &&
-	 ( $retcode == 0 ) ) {
+         ( $retcode == 0 ) ) {
 
-	$self->_logDebug( sprintf( "Printer %s on Server %s is okay",
-				   $self->{printer},
-				   $self->{server}) );
+        $self->_logDebug( sprintf( "Printer %s on Server %s is okay",
+                                   $self->{printer},
+                                   $self->{server}) );
 
-	return 1;
+        return 1;
 
     } # remote printer ok
     else {
 
-	$self->_lpdFatal( sprintf( "Printer %s on Server %s not okay",
-				   $self->{printer},
-				   $self->{server} ) );
-	$self->_logDebug( sprintf("Printer said %s",
-				  $buf ) );
+        $self->_lpdFatal( sprintf( "Printer %s on Server %s not okay",
+                                   $self->{printer},
+                                   $self->{server} ) );
+        $self->_logDebug( sprintf("Printer said %s",
+                                  $buf ) );
 
-	return undef;
+        return undef;
 
     } # remote printer not ok
 
@@ -712,89 +709,91 @@ sub _lpdSend {
 
     $self->_logDebug( "invoked ... " );
 
-    my $lpdhash = { "3" => { "name" => $p_dfile,
-			     "real" => $dfile },
-		    "2" => { "name" => $p_cfile,
-			     "real" => $cfile } };
-    
+    my $lpdhash = {
+                   "3" => { "name" => $p_dfile,
+                            "real" => $dfile },
+                   "2" => { "name" => $p_cfile,
+                            "real" => $cfile },
+                  };
+
     foreach my $type ( keys %{$lpdhash} ) {
 
-	$self->_logDebug( sprintf("TYPE:%d:FILE:%s:",
-				  $type,
-				  $lpdhash->{$type}->{"name"} ) );
-	
-	# Send msg to lpd
-	my $size = ( stat $lpdhash->{$type}->{"real"} )[7];
-	my $buf  = sprintf( "%c%ld %s\n",
-			    $type,                         # Xmit type
-			    $size,                         # size
-			    $lpdhash->{$type}->{"name"} ); # name
-	
-	$buf     = $self->_lpdCommand( $buf, 1 );
+        $self->_logDebug( sprintf("TYPE:%d:FILE:%s:",
+                                  $type,
+                                  $lpdhash->{$type}->{"name"} ) );
 
-	unless ($buf) {
-	    
-	    carp "Couldn't send data: $!\n";
-	    return undef;
+        # Send msg to lpd
+        my $size = ( stat $lpdhash->{$type}->{"real"} )[7];
+        my $buf  = sprintf( "%c%ld %s\n",
+                            $type,                         # Xmit type
+                            $size,                         # size
+                            $lpdhash->{$type}->{"name"} ); # name
 
-	}
+        $buf     = $self->_lpdCommand( $buf, 1 );
 
-	$self->_logDebug( sprintf( "FILE:%s:RESULT:%s",
-				   $lpdhash->{$type}->{"name"}, $buf ) );
-       	
-	my $fh = FileHandle->new( $lpdhash->{$type}->{"real"} );
+        unless ($buf) {
 
-	unless ( $fh ) {
+            carp "Couldn't send data: $!\n";
+            return undef;
 
-	    $self->_lpdFatal( sprintf("Could not open %s: %s\n",
-				      $lpdhash->{$type}->{"real"},
-				      $! ) );
+        }
 
-	    return undef;
-	    
-	}
+        $self->_logDebug( sprintf( "FILE:%s:RESULT:%s",
+                                   $lpdhash->{$type}->{"name"}, $buf ) );
 
-	my $blksize = ( stat $fh )[11] || 16384;
-	
-	while ( my $len = sysread $fh, $buf, $blksize ) {
+        my $fh = FileHandle->new( $lpdhash->{$type}->{"real"} );
 
-	    unless ($len) {
+        unless ( $fh ) {
 
-		next
-		    if ($! =~ /^Interrupted/);
-	
-		carp "Error while reading\n";
-		return undef;
+            $self->_lpdFatal( sprintf("Could not open %s: %s\n",
+                                      $lpdhash->{$type}->{"real"},
+                                      $! ) );
 
-	    }
-	    
-	    my $offset = 0;
+            return undef;
 
-	    while ( $len ) {
+        }
 
-		my $resp    = syswrite( $self->{socket},
-					$buf,
-					$len,
-					$offset );
-		
-		$len    -= $resp;
-		$offset += $resp;
+        my $blksize = ( stat $fh )[11] || 16384;
 
-	    }
+        while ( my $len = sysread $fh, $buf, $blksize ) {
 
-	} # while ($len = sysread $fh, $buf, $blksize) 
+            unless ($len) {
 
-	$fh->close();
+                next
+                    if ($! =~ /^Interrupted/);
 
-	# Confirm server response
-	$buf = $self->_lpdCommand( sprintf("%c",
-					   0), 
-				   1);
-	
-	$self->_logDebug( sprintf( "Confirmation status: %s",
-				   $buf) );
-	
-    } # foreach $type (keys %lpdhash) 
+                carp "Error while reading\n";
+                return undef;
+
+            }
+
+            my $offset = 0;
+
+            while ( $len ) {
+
+                my $resp    = syswrite( $self->{socket},
+                                        $buf,
+                                        $len,
+                                        $offset );
+
+                $len    -= $resp;
+                $offset += $resp;
+
+            }
+
+        } # while ($len = sysread $fh, $buf, $blksize) 
+
+        $fh->close();
+
+        # Confirm server response
+        $buf = $self->_lpdCommand( sprintf("%c",
+                                           0),
+                                   1);
+
+        $self->_logDebug( sprintf( "Confirmation status: %s",
+                                   $buf) );
+
+    } # foreach $type (keys %lpdhash)
 
     return 1;
 
@@ -816,7 +815,7 @@ sub DESTROY {
 
     # Just in case :)
     $self->{socket}->shutdown(2)
-	if ($self->{socket});
+        if ($self->{socket});
 
 } # DESTROY
 
@@ -827,15 +826,17 @@ sub DESTROY {
 
 sub new {
 
-    my (%vars)   = ( "filename"    => "",
-		     "lineconvert" => "No",
-		     "printer"     => "lp",
-		     "server"      => "localhost",
-		     "port"        => 515,
-		     "rfc1179"     => "No",
-		     "debug"       => "No",
-		     "timeout"     => 15);
-    
+    my (%vars)   = (
+                    "filename"    => "",
+                    "lineconvert" => "No",
+                    "printer"     => "lp",
+                    "server"      => "localhost",
+                    "port"        => 515,
+                    "rfc1179"     => "No",
+                    "debug"       => "No",
+                    "timeout"     => 15,
+                   );
+
     # Parameter(s);
     my $type   = shift;
     my %params = @_;
@@ -843,12 +844,12 @@ sub new {
 
     foreach my $var (keys %vars) {
 
-	if (exists $params{$var}) {
-	    $self->{$var} = $params{$var};
-	}
-	else {
-	    $self->{$var} = $vars{$var};
-	}
+        if (exists $params{$var}) {
+            $self->{$var} = $params{$var};
+        }
+        else {
+            $self->{$var} = $vars{$var};
+        }
 
     }
 
@@ -885,7 +886,7 @@ Net::Printer - Perl extension for direct-to-lpd printing.
   $result = $lineprinter->printfile("/home/jdoe/myfile.txt");
 
   # Print a string
-  $result = 
+  $result =
     $lineprinter->printstring("Smoke me a kipper, I'll be back for breakfast.");
 
   # Did I get an error?
@@ -905,7 +906,7 @@ and control information to the print server.
 Please note that this module only talks to print servers that speak
 BSD.  It will not talk to printers using SMB or SysV unless they are
 set up as BSD printers.  CUPS users will need to set up B<cups-lpd> to
-provide legacy access. ( See L</"Using Net::Printer with CUPS"> ) 
+provide legacy access. ( See L</"Using Net::Printer with CUPS"> )
 
 =head2 Parameters
 
@@ -918,13 +919,13 @@ provide legacy access. ( See L</"Using Net::Printer with CUPS"> )
 
 =item printer
 
-[optional] Name of the printer you wish to print to.  
+[optional] Name of the printer you wish to print to.
 Default "lp".
 
 =item server
 
 [optional] Name of the server that is running /lpsched.  Default
-"localhost".   
+"localhost".
 
 =item port
 
@@ -937,7 +938,7 @@ Default "lp".
 =item rfc1179
 
 [optional] Use RFC 1179 compliant source address.  Default "NO".  See
-below for security implications 
+below for security implications.
 
 =back
 

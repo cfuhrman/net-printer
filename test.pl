@@ -24,10 +24,10 @@ ok(1); # If we made it this far, we're ok.
 main : {
 
     $printer = Net::Printer->new( "lineconvert" => "Yes",
-				  "server"      => "localhost",
-				  "printer"     => "lp",
-				  "rfc1179"     => "No",
-				  "debug"       => "No");
+                                  "server"      => "localhost",
+                                  "printer"     => "lp",
+                                  "rfc1179"     => "No",
+                                  "debug"       => "No");
 
     ok( defined ($printer) );
 
@@ -36,8 +36,8 @@ main : {
     @status = $printer->queuestatus();
 
     foreach $line (@status) {
-	$line =~ s/\n//;
-	print "$line\n";
+        $line =~ s/\n//;
+        print "$line\n";
     }
 
     ok (defined @status);
