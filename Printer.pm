@@ -2,7 +2,7 @@
 #
 # Net::Printer
 #
-# $Id: Printer.pm,v 1.8 2003/02/19 02:06:28 cfuhrman Exp $
+# $Id: Printer.pm,v 1.9 2003/02/20 10:59:14 cfuhrman Exp $
 #
 # Chris Fuhrman <chris.fuhrman@tfcci.com>
 #
@@ -49,7 +49,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw( printfile );
-our $VERSION = '0.30';
+our $VERSION = '0.31';
 
 # Functions internal to Net::Printer
 
