@@ -3,7 +3,7 @@
 # `make test'. After `make install' it should work as `perl test.pl'
 
 #
-# $Id: test.pl,v 1.2 2003/02/10 18:18:40 cfuhrman Exp $
+# $Id: test.pl,v 1.3 2003/02/13 01:53:42 cfuhrman Exp $
 #
 
 #########################
@@ -39,6 +39,9 @@ main : {
     }
 
     ok (defined @status);
+
+    # Uncomment this if you want to test printstring
+    # ok (defined $printer->printstring("This is a test of printstring function\n"));
 
     print "Please check your default printer for printout.\n";
 
