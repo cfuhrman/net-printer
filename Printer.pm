@@ -2,7 +2,7 @@
 #
 # Net::Printer
 #
-# $Id: Printer.pm,v 1.5 2003/02/10 02:04:46 cfuhrman Exp $
+# $Id: Printer.pm,v 1.6 2003/02/10 18:24:33 cfuhrman Exp $
 #
 # Chris Fuhrman <chris.fuhrman@tfcci.com>
 #
@@ -13,13 +13,15 @@
 #   module is to provide a robust way of printing to a line printer
 #   and provide immediate feedback as to if it were successfully
 #   spooled or not. 
-#
+# 
+# Please see the COPYRIGHT file for important information on
+# distribution terms  
 #
 ########################################################################
 
 package Net::Printer;
 
-use 5.006;
+use 5.005;
 use strict;
 use warnings;
 use Carp;
@@ -210,9 +212,8 @@ sub get_controlfile {
     # Parameter(s)
     my $self = shift;
 
-    $myname = hostname();
-
-    $snum   = int (rand 1000);
+    $myname  = hostname();
+    $snum    = int (rand 1000);
 
     # Fill up hash
     $chash{'1H'} = $myname;
@@ -291,11 +292,21 @@ sub lpd_command {
 	    alarm 5;
 	    $self->{socket}->recv($response, 1024)
 		or die "recv: $!\n";
-	    alarm 0;
 
 	    1;
 
 	};
+
+	alarm 0;
+
+	if ($@) {
+	    
+	    if ($@ =~ /timeout/) {
+		carp "Timed out sending command\n";
+		return undef;
+	    }
+
+	}
 
 	log_debug(sprintf("lpd_command:Got back :%s:", $response), $self);
 
@@ -322,7 +333,8 @@ sub lpd_command {
 sub lpd_init {
 
     # Local Variable(s)
-    my ($buf);
+    my ($buf,
+	$retcode);
 
     # Parameter(s)
     my ($self) = shift;
@@ -331,19 +343,31 @@ sub lpd_init {
     $buf = sprintf("%c%s\n", 2, $self->{printer});
     $buf = lpd_command($self, $buf, 1);
     
-    if ($buf) {
+    $retcode = unpack("c", $buf);
+    log_debug("lpd_init:Return code is $retcode", $self);
+
+    if (($retcode =~ /\d/) &&
+	($retcode == 0)) {
+
 	log_debug(sprintf("lpd_init:Printer %s on Server %s is okay",
 			  $self->{printer},
 			  $self->{server}),
 		  $self);
 	return 1;
+
     }
     else {
+
 	log_debug(sprintf("lpd_init:Printer %s on Server %s not okay",
 			  $self->{printer},
 			  $self->{server}),
 		  $self);
+	log_debug(sprintf("lpd_init:Printer said %s",
+			  $buf),
+		  $self);
+
 	return undef;
+
     }
 
 } # lpd_init
@@ -474,6 +498,78 @@ sub lpd_datasend {
 
 #-----------------------------------------------------------------------
 #
+# queuestatus
+#
+# Purpose:
+#
+#   Retrieves status information from a specified printer returning
+#   output in an array.
+#
+# Parameter(s):
+#
+#   None.
+#
+
+sub queuestatus {
+
+    # Local Variable(s)
+    my ($sock,
+	@qstatus);
+
+    # Parameter(s)
+    my ($self) = shift;
+
+    # Open Connection to remote printer
+    $sock = open_socket($self);
+
+    if ($sock) {
+	$self->{socket} = $sock;
+    }
+    else {
+	carp "Could not connect to printer: $!\n";
+	return undef;
+    }
+
+    # Note that we want to handle remote lpd response ourselves
+    lpd_command($self,
+		sprintf("%c%s\n",
+			4,
+			$self->{printer}),
+		0);
+
+    # Read response from server and format
+    eval {
+	
+	local $SIG{ALRM} = sub { die "timeout\n" };
+
+	alarm 15;
+	$sock = $self->{socket};
+	while (<$sock>) {
+	    s/($_)/$self->{printer}\@$self->{server}: $1/;
+	    push (@qstatus, $_);
+	}
+	alarm 0;
+
+	1;
+
+    };
+
+    if ($@) {
+
+	carp "Warning: timed out getting status\n"
+	    if ($@ =~ /timeout/);	
+
+    }
+
+    # Clean up
+    $self->{socket}->shutdown(2);
+
+    return @qstatus;
+
+} # queuestatus
+
+#-----------------------------------------------------------------------
+#
 # printfile
 #
 # Purpose:
@@ -494,12 +590,18 @@ sub printfile {
 	$p_cfile,
 	$p_dfile,
 	$resp,
+	$pname,
 	$sock);
 
     # Parameter(s)
-    my $self = shift;
+    my $self  = shift;
+    my $pfile = shift;
 
     log_debug("Function printfile", $self);
+
+    # Are we being called with a file?
+    $self->{filename} = $pfile
+	if ($pfile);
 
     # File valid?
     if ( !($self->{filename}) ||
@@ -544,9 +646,14 @@ sub printfile {
 
     $resp = lpd_init($self);
 
-    if ($resp != 1) {
-	carp "Error: Printer not ready\n";
+    unless ($resp) {
+	
+	carp (sprintf("Printer %s on %s not ready!\n",
+		      $self->{printer},
+		      $self->{server}));
+
 	return undef;
+
     }
     
     $resp = lpd_datasend($self,
@@ -574,6 +681,25 @@ sub printfile {
 } # printfile
 
 #-----------------------------------------------------------------------
+
+#
+# called when module destroyed
+#
+
+sub DESTROY {
+
+    # Parameter(s)
+    my $self = shift;
+
+    # Just in case :)
+    $self->{socket}->shutdown(2)
+	if ($self->{socket});
+
+} # DESTROY
+
+#
+# called when module initialized
+#
 
 sub new {
 
@@ -626,32 +752,88 @@ __END__
 
 =head1 NAME
 
-Net::Printer - Perl extension for blah blah blah
+Net::Printer - Perl extension for direct-to-lpd printing.
 
 =head1 SYNOPSIS
 
-  use Net::Printer;
-  blah blah blah
+    use Net::Printer;
+
+  # Create new Printer Object
+  $lineprinter = new Net::Printer(
+                                  filename    => "/home/jdoe/myfile.txt",
+                                  printer     => "lp",
+                                  server      => "printserver",
+                                  port        => 515,
+                                  lineconvert => "YES"
+                                  );
+  # Print the file
+  $result = $lineprinter->printfile();
+
+  # Optionally print a file
+  $result = $lineprinter->printfile("/home/jdoe/myfile.txt");
+
+  # Print a string
+  $result = 
+    $lineprinter->printstring("Smoke me a kipper, I'll be back for breakfast.");
+
+  # Get Queue Status
+  @result = $lineprinter->queuestatus();
 
 =head1 DESCRIPTION
 
-Stub documentation for Net::Printer, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
+    Perl module for directly printing to a print server/printer without
+    having to create a pipe to either lpr or lp.  This essentially
+    mimics what the BSD LPR program does by connecting directly to the
+    line printer printer port (almost always 515), and transmitting
+    the data and control information to the print server.
 
-Blah blah blah.
+    Please note that this module only talks to print servers that
+    speak BSD.  It will not talk to printers using SMB or SysV unless
+    they are set up as BSD printers.
 
-=head2 EXPORT
+=head2 Parameters
 
-None by default.
+    filename    - [optional] absolute path to the file you wish to print.
 
+    printer     - [optional] Name of the printer you wish to print to.  
+                  Default "lp".
+ 
+    server      - [optional] Name of the server that is running
+                  lpd/lpsched.  Default "localhost".
+
+    port        - [optional] The port you wish to connect to.  
+                  Default "515".
+ 
+    lineconvert - [optional] Perform LF -> LF/CR translation.
+                  Default "NO"
+
+=head2 Functions
+
+    I<printfile> prints a specified file to the printer.  Returns a 1 on
+    success, otherwise returns a string containing the error.
+
+    I<printstring> prints a specified string to the printer as if it
+    were a complete file  Returns a 1 on success, otherwise returns a
+    string containing the error. 
+
+    I<queuestatus> returns the current status of the print queue.  I
+    recommend waiting a short period of time between printing and
+    issueing a queuestatus to give your spooler a chance to do it's
+    thing.  5 seconds tends to work for me.
+
+=head1 NOTES
+
+    When printing text, if you have the infamous "stair-stepping"
+    problem, try setting lineconvert to "YES".  This should, in most
+    cases, rectify the problem.
 
 =head1 AUTHOR
 
-A. U. Thor, E<lt>a.u.thor@a.galaxy.far.far.awayE<gt>
+C. M. Fuhrman, chris.fuhrman@tfcci.com
 
 =head1 SEE ALSO
 
-L<perl>.
+Socket, lpr(1), lp(1), perl(1).
 
 =cut
+
