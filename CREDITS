@@ -1,6 +1,7 @@
 
-Last Modified: $Date: 2003/02/20 10:56:31 $
+Last Modified: $Date$
 
 Jochen Stenzel for testing under Solaris Sparc 5.6
 Neil Lunn <neillunn@gunz.com.au> for Cygwin Port
 Matt Selsky <selsky@columbia.edu> for pod fixes and rfc1179 compliance
+Max Maischein <corion@corion.net> for assistance with MSWin32
