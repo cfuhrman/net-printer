@@ -1,6 +1,5 @@
 ########################################################################
-#
-# Net::Printer
+# File: Net::Printer
 #
 # $Id$
 #
@@ -46,9 +45,269 @@ our @ISA = qw(Exporter);
 #our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw( printerror printfile printstring queuestatus );
-our $VERSION = '0.39.1';
+our $VERSION = '0.40';
 
-# Functions internal to Net::Printer
+# ----------------------------------------------------------------------
+# Public Methods
+# ----------------------------------------------------------------------
+
+# Method: printerror
+#
+# Prints contents of errstr
+#
+# Parameters:
+#
+#   self - self object
+#
+
+sub printerror {
+
+    # Parameter(s)
+    my $self = shift;
+
+    return $self->{errstr};
+
+} # printerror()
+
+# Method: printfile
+#
+# Purpose:
+#
+#   Connects to a specified remote print process and transmits a print
+#   job.
+#
+# Parameters:
+#
+#   self - self
+#
+# Returns:
+#
+#   1 on success, undef on fail
+
+sub printfile {
+
+    my $dfile;
+
+    my $self  = shift;
+    my $pfile = shift;
+
+    $self->_logDebug( "invoked ... " );
+
+    # Are we being called with a file?
+    $self->{filename} = $pfile
+	if ( $pfile );
+
+    $self->_logDebug( sprintf( "Filename is %s",
+			       $self->{filename} ) );
+
+    # File valid?
+    if ( !( $self->{filename} ) ||
+	 ( ! -e $self->{filename} )) {
+
+	$self->_lpdFatal( sprintf( "Given filename (%s) not valid",
+				   $self->{filename} ) );
+	
+	return undef;
+
+    } 
+    elsif ( uc( $self->{lineconvert} ) eq "YES") {
+	$dfile = $self->_nlConvert();
+    } 
+    else {
+	$dfile = $self->{filename};
+    } 
+
+    $self->_logDebug( sprintf("Real Data File    %s", 
+			      $dfile) );
+
+    # Create Control File
+    my @files = $self->_fileCreate();
+
+    $self->_logDebug( sprintf( "Real Control File %s", 
+			       $files[0]   ) );
+    $self->_logDebug( sprintf( "Fake Data    File %s", 
+			       $files[1] ) );
+    $self->_logDebug( sprintf( "Fake Control File %s", 
+			       $files[2] ) );
+
+    unless ( -e $files[0] ) {
+	$self->_lpdFatal( "Could not create control file\n" );
+	return undef;
+    }
+
+    # Open Connection to remote printer
+    my $sock = $self->_socketOpen();
+
+    if ( $sock ) {
+	$self->{socket} = $sock;
+    }
+    else {
+	$self->_lpdFatal( "Could not connect to printer: $!\n" );
+	return undef;
+    }
+
+    my $resp = $self->_lpdInit();
+
+    unless ( $resp ) {
+	
+	$self->_lpdFatal( sprintf( "Printer %s on %s not ready!\n",
+				   $self->{printer},
+				   $self->{server} ) );
+	
+	return undef;
+
+    }
+    
+    $resp = $self->_lpdSend( $files[0],
+			     $dfile,
+			     $files[2],
+			     $files[1] );
+
+    unless ( $resp ) {
+
+	$self->_lpdFatal( "Error Occured sending data to printer\n" );
+			  
+	return undef;
+
+    }
+
+    # Clean up
+    $self->{socket}->shutdown(2);
+    
+    unlink $files[0];
+    unlink $dfile
+	if ( uc( $self->{lineconvert} ) eq "YES" );
+
+    return 1;
+
+} # printfile()
+
+# Method: printstring
+#
+# Takes a string and prints it.
+#
+# Parameters:
+#
+#   str  - string to print
+#
+# Returns:
+#
+#   1 on success, undef on fail
+
+sub printstring {
+
+    # Parameter(s)
+    my $self = shift;
+    my $str  = shift;
+
+    # Create temporary file
+    my $tmpfile = $self->_tmpfile();
+    my $fh      = FileHandle->new( "> $tmpfile" );
+
+    unless ($fh) {
+
+	$self->_lpdFatal( "Could not open $tmpfile: $!\n" );
+
+	return undef;
+
+    }
+
+    print $fh $str;
+    $fh->close();
+
+    if ( $self->printfile( $tmpfile ) ) {
+
+	unlink $tmpfile;
+	return 1;
+	
+    } 
+    else {
+	return undef;
+    }
+
+} # printstring()
+
+# Method: queuestatus
+#
+# Retrieves status information from a specified printer returning
+# output in an array.
+#
+# Parameters:
+#
+#   None.
+#
+# Returns:
+#
+#   Array containing queue status
+
+sub queuestatus {
+
+    my @qstatus;
+
+    my $self = shift;
+
+    # Open Connection to remote printer
+    my $sock = $self->_socketOpen();
+
+    if ($sock) {
+	$self->{socket} = $sock;
+    }
+    else {
+	
+	push( @qstatus,
+	      sprintf( "%s\@%s: Could not connect to printer: $!\n",
+		       $self->{printer},
+		       $self->{server} ) );
+
+	return @qstatus;
+
+    }
+
+    # Note that we want to handle remote lpd response ourselves
+    $self->_lpdCommand( sprintf("%c%s\n",
+				4,
+				$self->{printer}),
+			0);
+
+    # Read response from server and format
+    eval {
+	
+	local $SIG{ALRM} = sub { die "timeout\n" };
+
+	alarm 15;
+	$sock = $self->{socket};
+	while (<$sock>) {
+
+	    s/($_)/$self->{printer}\@$self->{server}: $1/;
+	    push ( @qstatus, $_ );
+
+	}
+	alarm 0;
+
+	1;
+
+    };
+
+    if ($@) {
+
+	push ( @qstatus,
+	       sprintf( "%s\@%s: Timed out getting status from remote printer\n",
+			$self->{printer},
+			$self->{server} ) )
+	    if ( $@ =~ /timeout/ );
+	
+    }
+    
+    # Clean up
+    $self->{socket}->shutdown(2);
+
+    return @qstatus;
+
+} # queuestatus()
+
+# ----------------------------------------------------------------------
+# Private Methods
+# ----------------------------------------------------------------------
 
 # Method: _logDebug
 #
@@ -115,24 +374,6 @@ sub _lpdFatal {
 
 # Preloaded methods go here.
 
-# Method: printerror
-#
-# Prints contents of errstr
-#
-# Parameters:
-#
-#   self - self object
-#
-
-sub printerror {
-
-    # Parameter(s)
-    my $self = shift;
-
-    return $self->{errstr};
-
-} # printerror()
-
 # Method: _tmpfile
 #
 # Creates temporary file returning it's name.
@@ -180,6 +421,8 @@ sub _tmpfile {
 sub _nlConvert {
 
     my $self  = shift;
+ 
+    $self->_logDebug( "invoked ... " );
 
     # Open files
     my $ofile = $self->{filename};
@@ -411,6 +654,8 @@ sub _lpdInit {
 
     my $self = shift;
 
+    $self->_logDebug( "invoked ... " );
+
     # Create and send ready
     $buf     = sprintf( "%c%s\n", 2, $self->{printer} );
     $buf     = $self->_lpdCommand( $buf, 1 );
@@ -555,257 +800,11 @@ sub _lpdSend {
 
 } # _lpdSend()
 
-# Method: queuestatus
-#
-# Retrieves status information from a specified printer returning
-# output in an array.
-#
-# Parameters:
-#
-#   None.
-#
-# Returns:
-#
-#   Array containing queue status
+# ----------------------------------------------------------------------
+# Standard publically accessible method
+# ----------------------------------------------------------------------
 
-sub queuestatus {
-
-    # Local Variable(s)
-    my ($sock,
-	@qstatus);
-
-    # Parameter(s)
-    my ($self) = shift;
-
-    # Open Connection to remote printer
-    $sock = $self->_socketOpen($self);
-
-    if ($sock) {
-	$self->{socket} = $sock;
-    }
-    else {
-	
-	push(@qstatus,
-	     sprintf("%s\@%s: Could not connect to printer: $!\n",
-		     $self->{printer},
-		     $self->{server}));
-
-	return @qstatus;
-
-    }
-
-    # Note that we want to handle remote lpd response ourselves
-    $self->_lpdCommand( sprintf("%c%s\n",
-				4,
-				$self->{printer}),
-			0);
-
-    # Read response from server and format
-    eval {
-	
-	local $SIG{ALRM} = sub { die "timeout\n" };
-
-	alarm 15;
-	$sock = $self->{socket};
-	while (<$sock>) {
-	    s/($_)/$self->{printer}\@$self->{server}: $1/;
-	    push (@qstatus, $_);
-	}
-	alarm 0;
-
-	1;
-
-    };
-
-    if ($@) {
-
-	push (@qstatus,
-	      sprintf("%s\@%s: Timed out getting status from remote printer\n",
-		      $self->{printer},
-		      $self->{server}))
-	    if ($@ =~ /timeout/);
-	
-    }
-    
-    # Clean up
-    $self->{socket}->shutdown(2);
-
-    return @qstatus;
-
-} # queuestatus()
-
-# Method: printstring
-#
-# Takes a string and prints it.
-#
-# Parameters:
-#
-#   self - self
-#
-#   str  - string to print
-#
-# Returns:
-#
-#   1 on success, undef on fail
-
-sub printstring {
-
-    # Local Variable(s)
-    my ($fh,
-	$tmpfile);
-
-    # Parameter(s)
-    my ($self, $str) = @_;
-
-
-    # Create temporary file
-    $tmpfile = _tmpfile();
-
-    $fh = new FileHandle "> $tmpfile";
-
-    unless ($fh) {
-
-	$self->_lpdFatal( "Could not open $tmpfile: $!\n" );
-
-	return undef;
-
-    }
-
-    print $fh $str;
-    $fh->close();
-
-    if ($self->printfile($tmpfile)) {
-
-	unlink $tmpfile;
-	return 1;
-	
-    } 
-    else {
-	return undef;
-    }
-
-} # printstring()
-
-# Method: printfile
-#
-# Purpose:
-#
-#   Connects to a specified remote print process and transmits a print
-#   job.
-#
-# Parameters:
-#
-#   self - self
-#
-# Returns:
-#
-#   1 on success, undef on fail
-
-sub printfile {
-
-    # Local Variable(s)
-    my ($cfile,
-	$dfile,
-	$p_cfile,
-	$p_dfile,
-	$resp,
-	$pname,
-	$sock);
-
-    # Parameter(s)
-    my $self  = shift;
-    my $pfile = shift;
-
-    $self->_logDebug( "printfile:init" );
-
-    # Are we being called with a file?
-    $self->{filename} = $pfile
-	if ($pfile);
-
-    # File valid?
-    if ( !($self->{filename} ) ||
-	 ( ! -e $self->{filename} )) {
-
-	$self->_lpdFatal( sprintf( "Given filename (%s) not valid",
-				   $self->{filename}) );
-	
-	return undef;
-
-    } 
-    elsif ( uc($self->{lineconvert}) eq "YES") {
-	$dfile = $self->_nlConvert();
-    } 
-    else {
-	$dfile = $self->{filename};
-    } 
-
-    $self->_logDebug( sprintf("printfile:Real Data File    %s", 
-			      $dfile) );
-
-    # Create Control File
-    ($cfile, $p_dfile, $p_cfile) = $self->_fileCreate();
-
-    $self->_logDebug( sprintf( "Real Control File %s", 
-			       $cfile   ) );
-    $self->_logDebug( sprintf( "Fake Control File %s", 
-			       $p_cfile ) );
-    $self->_logDebug( sprintf( "Fake Data    File %s", 
-			       $p_dfile ) );
-
-    unless ($cfile) {
-	$self->_lpdFatal( "Could not create control file\n" );
-	return undef;
-    }
-
-    # Open Connection to remote printer
-    $sock = $self->_socketOpen($self);
-
-    if ($sock) {
-	$self->{socket} = $sock;
-    }
-    else {
-	$self->_lpdFatal( "Could not connect to printer: $!\n" );
-	return undef;
-    }
-
-    $resp = $self->_lpdInit();
-
-    unless ($resp) {
-	
-	$self->_lpdFatal(sprintf("Printer %s on %s not ready!\n",
-				 $self->{printer},
-				 $self->{server}) );
-	
-	return undef;
-
-    }
-    
-    $resp = $self->_lpdSend( $cfile,
-			     $dfile,
-			     $p_cfile,
-			     $p_dfile );
-
-    unless ($resp) {
-
-	$self->_lpdFatal( "Error Occured sending data to printer\n" );
-			  
-	return undef;
-
-    }
-
-    # Clean up
-    $self->{socket}->shutdown(2);
-    
-    unlink $cfile;
-    unlink $dfile
-	if (uc($self->{lineconvert}) eq "YES");
-
-    return 1;
-
-} # printfile()
-
-#-----------------------------------------------------------------------
-
+# Method: DESTROY
 #
 # called when module destroyed
 #
@@ -821,14 +820,12 @@ sub DESTROY {
 
 } # DESTROY
 
+# Method: new
 #
 # called when module initialized
 #
 
 sub new {
-
-    # Local variable(s)
-    my ($var);
 
     my (%vars)   = ( "filename"    => "",
 		     "lineconvert" => "No",
@@ -844,7 +841,7 @@ sub new {
     my %params = @_;
     my $self   = {};
 
-    foreach $var (keys %vars) {
+    foreach my $var (keys %vars) {
 
 	if (exists $params{$var}) {
 	    $self->{$var} = $params{$var};
@@ -860,8 +857,6 @@ sub new {
     return bless $self, $type;
 
 } # new
-
-# Autoload methods go after =cut, and are processed by the autosplit program.
 
 1;
 __END__
@@ -901,34 +896,50 @@ Net::Printer - Perl extension for direct-to-lpd printing.
 
 =head1 DESCRIPTION
 
-    Perl module for directly printing to a print server/printer without
-    having to create a pipe to either lpr or lp.  This essentially
-    mimics what the BSD LPR program does by connecting directly to the
-    line printer printer port (almost always 515), and transmitting
-    the data and control information to the print server.
+Perl module for directly printing to a print server/printer without
+having to create a pipe to either lpr or lp.  This essentially mimics
+what the BSD LPR program does by connecting directly to the line
+printer printer port (almost always 515), and transmitting the data
+and control information to the print server. 
 
-    Please note that this module only talks to print servers that
-    speak BSD.  It will not talk to printers using SMB or SysV unless
-    they are set up as BSD printers.
+Please note that this module only talks to print servers that speak
+BSD.  It will not talk to printers using SMB or SysV unless they are
+set up as BSD printers.  CUPS users will need to set up B<cups-lpd> to
+provide legacy access. ( See L</"Using Net::Printer with CUPS"> ) 
 
 =head2 Parameters
 
-    filename    - [optional] absolute path to the file you wish to print.
 
-    printer     - [optional] Name of the printer you wish to print to.  
-                  Default "lp".
+=over 10
 
-    server      - [optional] Name of the server that is running
-                  lpd/lpsched.  Default "localhost".
+=item filename
 
-    port        - [optional] The port you wish to connect to.  
-                  Default "515".
+[optional] absolute path to the file you wish to print.
 
-    lineconvert - [optional] Perform LF -> LF/CR translation.
-                  Default "NO"
+=item printer
 
-    rfc1179     - [optional] Use RFC 1179 compliant source address.
-                  Default "NO".  See below for security implications
+[optional] Name of the printer you wish to print to.  
+Default "lp".
+
+=item server
+
+[optional] Name of the server that is running /lpsched.  Default
+"localhost".   
+
+=item port
+
+[optional] The port you wish to connect to.  Default "515".
+
+=item lineconvert
+
+[optional] Perform LF -> LF/CR translation.  Default "NO"
+
+=item rfc1179
+
+[optional] Use RFC 1179 compliant source address.  Default "NO".  See
+below for security implications 
+
+=back
 
 =head2 Functions
 
@@ -950,6 +961,7 @@ I<printerror> returns the error for your own purposes.
 
 =head2 Stair Stepping Problem
 
+
 When printing text, if you have the infamous "stair-stepping" problem,
 try setting lineconvert to "YES".  This should, in most cases, rectify
 the problem.
@@ -962,13 +974,24 @@ meaning you must have root (administrative) privileges to use them.
 I<This is a security risk which should be avoided if at all
 possible!>
 
+=head2 Using Net::Printer with CUPS
+
+Net::Printer, by itself, does not speak to printers running the CUPS
+protocol.  In order to provide support for legacy clients, most modern CUPS
+distributions include the B<cups-lpd> mini-server which can be set up
+to run out of either B<inetd> or B<xinetd> depending on preference.
+You will need to set up this functionality in order to use
+Net::Printer with a CUPS server.
+
 =head1 AUTHOR
 
 C. M. Fuhrman, chris.fuhrman@tfcci.com
 
 =head1 SEE ALSO
 
-Socket, lpr(1), lp(1), perl(1).
+cups-lpd(8), lp(1), lpr(1), perl(1), socket(2)
+
+RFC 1179 L<http://www.ietf.org/rfc/rfc1179.txt?number=1179>
 
 =cut
 
