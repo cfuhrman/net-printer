@@ -42,6 +42,7 @@ This module has been tested under the following systems:
 * Sun Solaris 2.7 x86
 * UnixWARE 2.1.3
 * Cygwin 1.1 Win32 (Neil Lunn)
+* Microsoft Services for UNIX
 * OpenBSD 3.2
 
 It should run successfully on other systems.  Feel free to notify me
