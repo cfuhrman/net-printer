@@ -45,7 +45,7 @@ our @ISA = qw(Exporter);
 #our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw( printerror printfile printstring queuestatus );
-our $VERSION = '0.40';
+our $VERSION = '1.00';
 
 # ----------------------------------------------------------------------
 # Public Methods
