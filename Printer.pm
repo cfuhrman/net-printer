@@ -2,7 +2,7 @@
 #
 # Net::Printer
 #
-# $Id: Printer.pm,v 1.7 2003/02/13 01:53:07 cfuhrman Exp $
+# $Id: Printer.pm,v 1.8 2003/02/19 02:06:28 cfuhrman Exp $
 #
 # Chris Fuhrman <chris.fuhrman@tfcci.com>
 #
@@ -21,7 +21,7 @@
 
 package Net::Printer;
 
-use 5.005;
+use 5.006;
 use strict;
 use warnings;
 use Carp;
@@ -172,15 +172,28 @@ sub nl_convert {
 sub open_socket {
 
     # Local Variable(s)
-    my ($sock);
+    my ($sock, $p);
 
     # Parameter(s)
     my $self = shift;
 
-    $sock = IO::Socket::INET->new(Proto    => 'tcp',
-				  PeerAddr => $self->{server},
-				  PeerPort => $self->{port});
+    if (uc($self->{rfc1179}) eq "NO") {
+	$sock = IO::Socket::INET->new(Proto    => 'tcp',
+				      PeerAddr => $self->{server},
+				      PeerPort => $self->{port});
+    } else {
 
+	# RFC 1179 says "source port be in the range 721-731"
+	foreach $p (721 .. 731) {
+	    $sock = IO::Socket::INET->new( PeerAddr => $self->{server},
+					   PeerPort => $self->{port},
+					   Proto => 'tcp',
+					   LocalPort => $p
+					   ) and last;
+	}
+
+    }
+    
     return $sock;
 
 } # open_socket
@@ -760,6 +773,7 @@ sub new {
 		     "printer"     => "lp",
 		     "server"      => "localhost",
 		     "port"        => 515,
+		     "rfc1179"     => "No",
 		     "debug"       => "No" );
     
     # Parameter(s);
@@ -805,7 +819,7 @@ Net::Printer - Perl extension for direct-to-lpd printing.
 
 =head1 SYNOPSIS
 
-    use Net::Printer;
+  use Net::Printer;
 
   # Create new Printer Object
   $lineprinter = new Net::Printer(
@@ -846,35 +860,48 @@ Net::Printer - Perl extension for direct-to-lpd printing.
 
     printer     - [optional] Name of the printer you wish to print to.  
                   Default "lp".
- 
+
     server      - [optional] Name of the server that is running
                   lpd/lpsched.  Default "localhost".
 
     port        - [optional] The port you wish to connect to.  
                   Default "515".
- 
+
     lineconvert - [optional] Perform LF -> LF/CR translation.
                   Default "NO"
 
+    rfc1179     - [optional] Use RFC 1179 compliant source address.
+                  Default "NO".
+
 =head2 Functions
 
-    I<printfile> prints a specified file to the printer.  Returns a 1 on
-    success, otherwise returns a string containing the error.
+I<printfile> prints a specified file to the printer.  Returns a 1 on
+success, otherwise returns a string containing the error.
 
-    I<printstring> prints a specified string to the printer as if it
-    were a complete file  Returns a 1 on success, otherwise returns a
-    string containing the error. 
+I<printstring> prints a specified string to the printer as if it were
+a complete file Returns a 1 on success, otherwise returns a string
+containing the error.
 
-    I<queuestatus> returns the current status of the print queue.  I
-    recommend waiting a short period of time between printing and
-    issueing a queuestatus to give your spooler a chance to do it's
-    thing.  5 seconds tends to work for me.
+I<queuestatus> returns the current status of the print queue.  I
+recommend waiting a short period of time between printing and issueing
+a queuestatus to give your spooler a chance to do it's thing.  5
+seconds tends to work for me.
 
-=head1 NOTES
+=head1 TROUBLESHOOTING
 
-    When printing text, if you have the infamous "stair-stepping"
-    problem, try setting lineconvert to "YES".  This should, in most
-    cases, rectify the problem.
+=head2 Stair Stepping Problem
+
+When printing text, if you have the infamous "stair-stepping" problem,
+try setting lineconvert to "YES".  This should, in most cases, rectify
+the problem.
+
+=head2 RFC1179 Compliance Mode
+
+RFC 1179 specifies that any program connecting to a print service must
+use a source port between 721 and 731, which are I<reserved ports>,
+meaning you must have root (administrative) privileges to use them.
+I<This is a security risk which should be avoided if at all
+possible!>
 
 =head1 AUTHOR
 
