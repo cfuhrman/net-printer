@@ -1,6 +1,6 @@
 Net::Printer - Perl extension for direct-to-lpd printing.
 
-Last Modified: $Date: 2000/06/07 21:22:38 $
+Last Modified: $Date: 2001/03/11 16:46:11 $
 
 Perl module for directly printing to a print server/printer without
 having to create a pipe to either lpr or lp.  This essentially mimics
@@ -31,7 +31,7 @@ This module has been tested under the following systems:
 * Sun Solaris 5.6 SPARC (Jochen Stenzel)
 * Sun Solaris 2.7 x86
 * UnixWARE 2.1.3
-
+* Cygwin 1.1 Win32 (Neil Lunn)
 
 It should run successfully on other systems.  Feel free to notify me
 if this module works successfully under other OSes.
