@@ -2,7 +2,7 @@
 #
 # Net::Printer
 #
-# $Id: Printer.pm,v 1.6 2003/02/10 18:24:33 cfuhrman Exp $
+# $Id: Printer.pm,v 1.7 2003/02/13 01:53:07 cfuhrman Exp $
 #
 # Chris Fuhrman <chris.fuhrman@tfcci.com>
 #
@@ -567,6 +567,55 @@ sub queuestatus {
     return @qstatus;
 
 } # queuestatus
+
+#-----------------------------------------------------------------------
+#
+# printstring
+#
+# Purpose:
+#
+#   Takes a string and prints it.
+#
+# Parameter(s):
+#
+#   self - self
+#
+#   str  - string to print
+#
+
+sub printstring {
+
+    # Local Variable(s)
+    my ($fh,
+	$tmpfile);
+
+    # Parameter(s)
+    my ($self, $str) = @_;
+
+    # Create temporary file
+    $tmpfile = get_tmpfile();
+
+    $fh = new FileHandle "> $tmpfile";
+
+    unless ($fh) {
+	carp "Could not open $tmpfile: $!\n";
+	return undef;
+    }
+
+    print $fh $str;
+    $fh->close();
+
+    if ($self->printfile($tmpfile)) {
+
+	unlink $tmpfile;
+	return 1;
+	
+    } 
+    else {
+	return undef;
+    }
+
+} # printstring
 
 #-----------------------------------------------------------------------
 #
