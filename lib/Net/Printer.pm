@@ -45,7 +45,7 @@ our @ISA = qw(Exporter);
 #our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw( printerror printfile printstring queuestatus );
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 # ----------------------------------------------------------------------
 # Public Methods
@@ -740,7 +740,7 @@ sub _lpdSend {
 	}
 
 	$self->_logDebug( sprintf( "FILE:%s:RESULT:%s",
-				   $lpdhash->{$type}->{"name"} ) );
+				   $lpdhash->{$type}->{"name"}, $buf ) );
        	
 	my $fh = FileHandle->new( $lpdhash->{$type}->{"real"} );
 
