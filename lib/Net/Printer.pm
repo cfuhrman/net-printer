@@ -24,14 +24,15 @@ package Net::Printer;
 use 5.006;
 use strict;
 use warnings;
+
 use Carp;
 use FileHandle;
 use IO::Socket;
-use POSIX qw (tmpnam);
+use POSIX qw ( tmpnam );
 use Sys::Hostname;
 
 require Exporter;
-use AutoLoader qw(AUTOLOAD);
+# use AutoLoader qw(AUTOLOAD);
 
 our @ISA = qw(Exporter);
 
@@ -49,76 +50,77 @@ our $VERSION = '0.32';
 
 # Functions internal to Net::Printer
 
-#-----------------------------------------------------------------------
+# Method: _logDebug
 #
-# log_debug
+# Displays informative messages ... meant for debugging.
 #
-# Purpose:
-#
-#   Displays informative messages ... meant for debugging.
-#
-# Parameter(s):
+# Parameters:
 #
 #   msg    - message to display
 #
-#   self   - self object
+# Returns:
 #
+#   none
 
-sub log_debug {
+sub _logDebug {
 
     # Parameter(s)
-    my ($msg, $self) = @_;
+    my $self = shift;
+    my $msg  = shift;
 
-    $msg =~ s/\n//;
-    printf("DEBUG: %s\n",
-	   $msg)
-	if (uc($self->{debug}) eq "YES");
+    $msg  =~ s/\n//;
 
-} # log_debug
+    my @a = caller();
 
-#-----------------------------------------------------------------------
+    printf( "DEBUG-> %s[%d]: %s\n",
+	    $a[0],
+	    $a[2],
+	    $msg )
+	if ( uc( $self->{debug} ) eq "YES" );
+
+} # _logDebug()
+
+# Method: _lpdFatal
 #
-# lpd_fatal
+# Gets called when there is an unrecoverable error.  Sets error
+# object for debugging purposes.
 #
-# Purpose:
-#
-#   Gets called when there is an unrecoverable error.  Sets error
-#   object for debugging purposes.
-#
-# Parameter(s):
+# Parameters:
 #
 #   msg - Error message to log
 #
+# Returns:
+#
+#   1
 
-sub lpd_fatal {
+sub _lpdFatal {
 
-    # Local Variable(s)
-    my ($errstr);
+    my $self = shift;
+    my $msg  = shift;
     
-    # Parameter(s)
-    my ($msg, $self) = @_;
+    $msg            =~ s/\n//;
     
-    $msg                =~ s/\n//;
-    $errstr             =  sprintf("Net::Printer:ERROR: %s",
-				   $msg);
+    my @a           = caller();
+
+    my $errstr      =  sprintf( "ERROR:%s[%d]: %s",
+				$a[0],
+				$a[2],
+				$msg );
+
     $self->{errstr} =  $errstr;   
  
     carp "$errstr\n";
     return 1;
 
-} # lpd_fatal
+} # _lpdFatal()
 
 # Preloaded methods go here.
 
-#----------------------------------------------------------------------
+# Method: printerror
 #
-# printerror
+# Prints contents of errstr
 #
-# Purpose:
-#
-#   Prints contents of errstr
-#
-# Parameter(s):
+# Parameters:
 #
 #   self - self object
 #
@@ -126,26 +128,22 @@ sub lpd_fatal {
 sub printerror {
 
     # Parameter(s)
-    my ($self) = shift;
+    my $self = shift;
 
     return $self->{errstr};
 
-} # printerror
+} # printerror()
 
-#----------------------------------------------------------------------
+# Method: _tmpfile
 #
-# get_tmpfile
+# Creates temporary file returning it's name.
 #
-# Purpose:
-#
-#   Creates temporary file returning it's name.
-#
-# Parameter(s):
+# Parameters:
 #
 #   none
 #
 
-sub get_tmpfile {
+sub _tmpfile {
 
     # Local Variable(s)
     my ($name, $fh);
@@ -159,22 +157,21 @@ sub get_tmpfile {
     
     return $name;
 
-} # get_tmpfile
+} # _tmpfile
 
-#----------------------------------------------------------------------
+# Method: nl_convert
 #
-# nl_convert
+# Given a filename, will convert newline's (\n) to
+# newline-carriage-return (\n\r), output to new file, returning name
+# of file.
 #
-# Purpose:
-#
-#   Given a filename, will convert newline's (\n) to
-#   newline-carriage-return (\n\r), output to new file, returning name
-#   of file.
-#
-# Parameter(s):
+# Parameters:
 #
 #   self  - self object
 #
+# Returns:
+#
+#   name of file containing strip'd text
 
 sub nl_convert {
 
@@ -186,15 +183,15 @@ sub nl_convert {
 
     # Open files
     $ofile = $self->{filename};
-    $nfile = get_tmpfile();
+    $nfile = _tmpfile();
 
     unless ($ofh = new FileHandle "$ofile") {
-	log_debug ("Cannot open $ofile: $!\n", $self);
+	$self->_logDebug ( "Cannot open $ofile: $!\n" );
 	return undef;
     }
 
     unless ($nfh = new FileHandle "> $nfile") {
-	log_debug ("Cannot open $nfile: $!\n", $self);
+	$self->_logDebug ( "Cannot open $nfile: $!\n" );
 	return undef;
     }
 
@@ -211,20 +208,19 @@ sub nl_convert {
 
     return $nfile;
 
-} # nl_convert
+} # nl_convert()
 
-#-----------------------------------------------------------------------
+# Method: open_socket
 #
-# open_socket
+# Opens a socket returning it
 #
-# Purpose:
-#
-#   Opens a socket returning it
-#
-# Parameter(s):
+# Parameters:
 #
 #   self - self object
 #
+# Returns:
+#
+#   socket
 
 sub open_socket {
 
@@ -253,20 +249,25 @@ sub open_socket {
     
     return $sock;
 
-} # open_socket
+} # open_socket()
 
-#-----------------------------------------------------------------------
-#
-# get_controlfile
+# Method: get_controlfile
 #
 # Purpose:
 #
 #   Creates control file
 #
-# Parameter(s):
+# Parameters:
 #
 #   self - self
 #   
+# Returns:
+#
+#   *Array containing following elements:*
+#
+#    - control file
+#    - name of data file
+#    - name of control file
 
 sub get_controlfile {
 
@@ -298,13 +299,15 @@ sub get_controlfile {
 			   $myname);
     $chash{'7N'} = $self->{filename};
 
-    $cfile = get_tmpfile();
+    $cfile = _tmpfile();
     $cfh   = new FileHandle "> $cfile";
 
     unless ($cfh) {
-	log_debug("get_controlfile:Could not create file $cfile: $!", $self);
+
+	$self->_logDebug( "get_controlfile:Could not create file $cfile: $!" );
 	return undef;
-    }
+
+    } # if we didn't get a proper filehandle
 
     foreach $key ( sort keys %chash ) {
 
@@ -320,18 +323,14 @@ sub get_controlfile {
 
     return ($cfile, $chash{'5f'}, $chash{'6U'});
 
-} # get_controlfile
+} # get_controlfile()
 
-#-----------------------------------------------------------------------
+# Method: lpd_command
 #
-# lpd_command
+# Sends command to remote lpd process, returning response if
+# asked.
 #
-# Purpose:
-#
-#   Sends command to remote lpd process, returning response if
-#   asked.
-#
-# Parameter(s):
+# Parameters:
 #
 #   self - self
 #
@@ -339,6 +338,9 @@ sub get_controlfile {
 #
 #   gans - do we get an answer?  (0 - no, 1 - yes)
 #
+# Returns:
+#
+#   response of lpd command
 
 sub lpd_command {
 
@@ -348,7 +350,8 @@ sub lpd_command {
     # Parameter(s)
     my ($self, $cmd, $gans) = @_;
 
-    log_debug(sprintf ("lpd_command:Sending %s", $cmd), $self);
+    $self->_logDebug( sprintf ( "Sending %s", 
+				$cmd) );
 
     $self->{socket}->send($cmd);
 
@@ -372,33 +375,33 @@ sub lpd_command {
 	if ($@) {
 
 	    if ($@ =~ /timeout/) {
-		log_debug("lpd_command:Timed out sending command", $self);
+		$self->_logDebug( "Timed out sending command" );
 		return undef;
 	    }
 
 	}
 
-	log_debug(sprintf("lpd_command:Got back :%s:", $response), $self);
+	$self->_logDebug( sprintf( "Got back :%s:", 
+				   $response) );
 
 	return $response;
 
     } # if ($gans)
 
-} # lpd_command
+} # lpd_command()
 
-#-----------------------------------------------------------------------
+# Method: lpd_init
 #
-# lpd_init
+# Notify remote lpd server that we're going to print returning 1 on
+# okay, undef on fail.
 #
-# Purpose:
-#
-#   Notify remote lpd server that we're going to print returning 1 on
-#   okay, undef on fail.
-#
-# Parameter(s):
+# Parameters:
 #
 #   self - self
 #
+# Returns:
+#
+#   1 on success, undef on fail
 
 sub lpd_init {
 
@@ -414,27 +417,25 @@ sub lpd_init {
     $buf = lpd_command($self, $buf, 1);
     
     $retcode = unpack("c", $buf);
-    log_debug("lpd_init:Return code is $retcode", $self);
+    $self->_logDebug( "Return code is $retcode" );
 
     if (($retcode =~ /\d/) &&
 	($retcode == 0)) {
 
-	log_debug(sprintf("lpd_init:Printer %s on Server %s is okay",
-			  $self->{printer},
-			  $self->{server}),
-		  $self);
+	$self->_logDebug( sprintf( "Printer %s on Server %s is okay",
+				   $self->{printer},
+				   $self->{server}) );
+
 	return 1;
 
     }
     else {
 
-	lpd_fatal(sprintf("lpd_init:Printer %s on Server %s not okay",
-			  $self->{printer},
-			  $self->{server}),
-		  $self);
-	log_debug(sprintf("lpd_init:Printer said %s",
-			  $buf),
-		  $self);
+	$self->_lpdFatal( sprintf( "Printer %s on Server %s not okay",
+				   $self->{printer},
+				   $self->{server}) );
+	$self->_logDebug( sprintf("Printer said %s",
+				  $buf) );
 
 	return undef;
 
@@ -442,19 +443,17 @@ sub lpd_init {
 
 } # lpd_init
 
-#-----------------------------------------------------------------------
+# Method: lpd_datasend
 #
-# lpd_datasend
-#
-# Purpose:
-#
-#   Sends the control file and data file
+# Sends the control file and data file
 #
 # Parameter(s):
 #
 #   self   - self
 #
-# 
+# Returns:
+#
+#   1 on success, undef on fail
 
 sub lpd_datasend {
 
@@ -472,9 +471,8 @@ sub lpd_datasend {
     # Parameter(s)
     my ($self, $cfile, $dfile, $p_cfile, $p_dfile) = @_;
     
-    log_debug("lpd_datasend:init", $self);
+    $self->_logDebug( "invoked ... " );
 
-    # tie %{$lpdhash}, "Tie::IxHash";
     ($lpdhash) = { "3" => { "name" => $p_dfile,
 			    "real" => $dfile },
 		   "2" => { "name" => $p_cfile,
@@ -482,10 +480,9 @@ sub lpd_datasend {
     
     foreach $type (keys %{$lpdhash}) {
 
-	log_debug(sprintf("lpd_datasend:TYPE:%d:FILE:%s:",
-			  $type,
-			  $lpdhash->{$type}->{"name"}),
-		  $self);
+	$self->_logDebug( sprintf("TYPE:%d:FILE:%s:",
+				  $type,
+				  $lpdhash->{$type}->{"name"} ) );
 	
 	# Send msg to lpd
 	($size) = (stat $lpdhash->{$type}->{"real"}) [7];
@@ -503,17 +500,17 @@ sub lpd_datasend {
 
 	}
 
-	log_debug(sprintf("lpd_datasend:FILE:%s:RESULT:%s",
-			  $lpdhash->{$type}->{"name"}),
-		  $self);
+	$self->_logDebug( sprintf( "FILE:%s:RESULT:%s",
+				   $lpdhash->{$type}->{"name"} ) );
        	
 	$fh = new FileHandle $lpdhash->{$type}->{"real"};
 
 	unless ($fh) {
 
-	    lpd_fatal(sprintf("Could not open %s: %s\n",
-			      $lpdhash->{$type}->{"real"},
-			      $!));
+	    $self->_lpdFatal( sprintf("Could not open %s: %s\n",
+				      $lpdhash->{$type}->{"real"},
+				      $! ) );
+
 	    return undef;
 	    
 	}
@@ -556,9 +553,8 @@ sub lpd_datasend {
 				   0), 
 			   1);
 	
-	log_debug(sprintf("lpd_datasend:Confirmation status: %s",
-			  $buf),
-		  $self);
+	$self->_logDebug( sprintf( "Confirmation status: %s",
+				   $buf) );
 	
     } # foreach $type (keys %lpdhash) 
 
@@ -566,19 +562,18 @@ sub lpd_datasend {
 
 } # lpd_datasend
 
-#-----------------------------------------------------------------------
+# Method: queuestatus
 #
-# queuestatus
+# Retrieves status information from a specified printer returning
+# output in an array.
 #
-# Purpose:
-#
-#   Retrieves status information from a specified printer returning
-#   output in an array.
-#
-# Parameter(s):
+# Parameters:
 #
 #   None.
 #
+# Returns:
+#
+#   Array containing queue status
 
 sub queuestatus {
 
@@ -645,22 +640,21 @@ sub queuestatus {
 
     return @qstatus;
 
-} # queuestatus
+} # queuestatus()
 
-#-----------------------------------------------------------------------
+# Method: printstring
 #
-# printstring
+# Takes a string and prints it.
 #
-# Purpose:
-#
-#   Takes a string and prints it.
-#
-# Parameter(s):
+# Parameters:
 #
 #   self - self
 #
 #   str  - string to print
 #
+# Returns:
+#
+#   1 on success, undef on fail
 
 sub printstring {
 
@@ -673,14 +667,16 @@ sub printstring {
 
 
     # Create temporary file
-    $tmpfile = get_tmpfile();
+    $tmpfile = _tmpfile();
 
     $fh = new FileHandle "> $tmpfile";
 
     unless ($fh) {
-	lpd_fatal("Could not open $tmpfile: $!\n",
-		  $self);
+
+	$self->_lpdFatal( "Could not open $tmpfile: $!\n" );
+
 	return undef;
+
     }
 
     print $fh $str;
@@ -696,21 +692,22 @@ sub printstring {
 	return undef;
     }
 
-} # printstring
+} # printstring()
 
-#-----------------------------------------------------------------------
-#
-# printfile
+# Method: printfile
 #
 # Purpose:
 #
 #   Connects to a specified remote print process and transmits a print
 #   job.
 #
-# Parameter(s):
+# Parameters:
 #
 #   self - self
 #
+# Returns:
+#
+#   1 on success, undef on fail
 
 sub printfile {
 
@@ -727,19 +724,18 @@ sub printfile {
     my $self  = shift;
     my $pfile = shift;
 
-    log_debug("printfile:init", $self);
+    $self->_logDebug( "printfile:init" );
 
     # Are we being called with a file?
     $self->{filename} = $pfile
 	if ($pfile);
 
     # File valid?
-    if ( !($self->{filename}) ||
+    if ( !($self->{filename} ) ||
 	 ( ! -e $self->{filename} )) {
 
-	lpd_fatal(sprintf("Given filename (%s) not valid",
-			  $self->{filename}),
-		  $self);
+	$self->_lpdFatal( sprintf( "Given filename (%s) not valid",
+				   $self->{filename}) );
 	
 	return undef;
 
@@ -751,17 +747,21 @@ sub printfile {
 	$dfile = $self->{filename};
     } 
 
-    log_debug(sprintf("printfile:Real Data File    %s", $dfile), $self);
+    $self->_logDebug( sprintf("printfile:Real Data File    %s", 
+			      $dfile) );
 
     # Create Control File
     ($cfile, $p_dfile, $p_cfile) = get_controlfile($self);
 
-    log_debug(sprintf("printfile:Real Control File %s", $cfile),   $self);
-    log_debug(sprintf("printfile:Fake Control File %s", $p_cfile), $self);
-    log_debug(sprintf("printfile:Fake Data    File %s", $p_dfile), $self);
+    $self->_logDebug( sprintf( "Real Control File %s", 
+			       $cfile   ) );
+    $self->_logDebug( sprintf( "Fake Control File %s", 
+			       $p_cfile ) );
+    $self->_logDebug( sprintf( "Fake Data    File %s", 
+			       $p_dfile ) );
 
     unless ($cfile) {
-	lpd_fatal("Could not create control file\n", $self);
+	$self->_lpdFatal( "Could not create control file\n" );
 	return undef;
     }
 
@@ -772,7 +772,7 @@ sub printfile {
 	$self->{socket} = $sock;
     }
     else {
-	lpd_fatal("Could not connect to printer: $!\n", $self);
+	$self->_lpdFatal( "Could not connect to printer: $!\n" );
 	return undef;
     }
 
@@ -780,10 +780,9 @@ sub printfile {
 
     unless ($resp) {
 	
-	lpd_fatal(sprintf("Printer %s on %s not ready!\n",
-			  $self->{printer},
-			  $self->{server}),
-		  $self);
+	$self->_lpdFatal(sprintf("Printer %s on %s not ready!\n",
+				 $self->{printer},
+				 $self->{server}) );
 	
 	return undef;
 
@@ -797,7 +796,8 @@ sub printfile {
 
     unless ($resp) {
 
-	lpd_fatal("Error Occured sending data to printer\n", $self);
+	$self->_lpdFatal( "Error Occured sending data to printer\n" );
+			  
 	return undef;
 
     }
@@ -811,7 +811,7 @@ sub printfile {
 
     return 1;
 
-} # printfile
+} # printfile()
 
 #-----------------------------------------------------------------------
 
@@ -855,23 +855,12 @@ sub new {
 
     foreach $var (keys %vars) {
 
-	log_debug ("VAR:$var:", $self);
-
 	if (exists $params{$var}) {
 	    $self->{$var} = $params{$var};
 	}
 	else {
 	    $self->{$var} = $vars{$var};
 	}
-
-    }
-
-    foreach $var (keys %vars) {
-
-	log_debug(sprintf("%-10s => %10s\n",
-			  $var,
-			  $self->{$var}),
-		  $self);
 
     }
 
