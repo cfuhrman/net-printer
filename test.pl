@@ -3,7 +3,7 @@
 # `make test'. After `make install' it should work as `perl test.pl'
 
 #
-# $Id: test.pl,v 1.3 2003/02/13 01:53:42 cfuhrman Exp $
+# $Id: test.pl,v 1.4 2003/02/19 02:03:10 cfuhrman Exp $
 #
 
 #########################
@@ -12,7 +12,7 @@
 
 use Test;
 BEGIN { plan tests => 1 };
-use Printer;
+use Net::Printer;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -25,6 +25,7 @@ main : {
     $printer = Net::Printer->new( "lineconvert" => "Yes",
 				  "server"      => "localhost",
 				  "printer"     => "lp",
+				  "rfc1179"     => "No",
 				  "debug"       => "No");
 
     ok( defined ($printer) );
