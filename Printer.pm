@@ -2,7 +2,7 @@
 #
 # Net::Printer
 #
-# $Id: Printer.pm,v 1.10 2003/03/15 14:05:05 cfuhrman Exp $
+# $Id$
 #
 # Chris Fuhrman <chris.fuhrman@tfcci.com>
 #
@@ -974,7 +974,7 @@ When printing text, if you have the infamous "stair-stepping" problem,
 try setting lineconvert to "YES".  This should, in most cases, rectify
 the problem.
 
-=head2 RFC-1179 Compliance Mode
+=head2 RFC-1179 Compliance Mode and Security Implications
 
 RFC 1179 specifies that any program connecting to a print service must
 use a source port between 721 and 731, which are I<reserved ports>,
