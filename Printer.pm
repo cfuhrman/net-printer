@@ -2,7 +2,7 @@
 #
 # Net::Printer
 #
-# $Id: Printer.pm,v 1.9 2003/02/20 10:59:14 cfuhrman Exp $
+# $Id: Printer.pm,v 1.10 2003/03/15 14:05:05 cfuhrman Exp $
 #
 # Chris Fuhrman <chris.fuhrman@tfcci.com>
 #
@@ -42,14 +42,10 @@ our @ISA = qw(Exporter);
 # This allows declaration	use Net::Printer ':all';
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
-our %EXPORT_TAGS = ( 'all' => [ qw(
-	
-) ] );
+#our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-
-our @EXPORT = qw( printfile );
-our $VERSION = '0.31';
+our @EXPORT = qw( printerror printfile printstring queuestatus );
+our $VERSION = '0.32';
 
 # Functions internal to Net::Printer
 
@@ -80,7 +76,61 @@ sub log_debug {
 
 } # log_debug
 
+#-----------------------------------------------------------------------
+#
+# lpd_fatal
+#
+# Purpose:
+#
+#   Gets called when there is an unrecoverable error.  Sets error
+#   object for debugging purposes.
+#
+# Parameter(s):
+#
+#   msg - Error message to log
+#
+
+sub lpd_fatal {
+
+    # Local Variable(s)
+    my ($errstr);
+    
+    # Parameter(s)
+    my ($msg, $self) = @_;
+    
+    $msg                =~ s/\n//;
+    $errstr             =  sprintf("Net::Printer:ERROR: %s",
+				   $msg);
+    $self->{errstr} =  $errstr;   
+ 
+    carp "$errstr\n";
+    return 1;
+
+} # lpd_fatal
+
 # Preloaded methods go here.
+
+#----------------------------------------------------------------------
+#
+# printerror
+#
+# Purpose:
+#
+#   Prints contents of errstr
+#
+# Parameter(s):
+#
+#   self - self object
+#
+
+sub printerror {
+
+    # Parameter(s)
+    my ($self) = shift;
+
+    return $self->{errstr};
+
+} # printerror
 
 #----------------------------------------------------------------------
 #
@@ -123,23 +173,30 @@ sub get_tmpfile {
 #
 # Parameter(s):
 #
-#   ofile - name of file to process
+#   self  - self object
 #
 
 sub nl_convert {
 
     # Local Variable(s)
-    my ($nfile, $ofh, $nfh);
+    my ($nfile, $ofile, $ofh, $nfh);
 
     # Parameter(s)
-    my $ofile = shift;
+    my ($self) = @_;
 
     # Open files
+    $ofile = $self->{filename};
     $nfile = get_tmpfile();
-    $ofh   = new FileHandle "$ofile"
-	|| croak "Cannot open $ofile: $!\n";
-    $nfh   = new FileHandle "> $nfile"
-	|| croak "Cannot open $nfile: $!\n";
+
+    unless ($ofh = new FileHandle "$ofile") {
+	log_debug ("Cannot open $ofile: $!\n", $self);
+	return undef;
+    }
+
+    unless ($nfh = new FileHandle "> $nfile") {
+	log_debug ("Cannot open $nfile: $!\n", $self);
+	return undef;
+    }
 
     while (<$ofh>) {
 
@@ -245,7 +302,7 @@ sub get_controlfile {
     $cfh   = new FileHandle "> $cfile";
 
     unless ($cfh) {
-	carp "Could not create file $cfile: $!\n";
+	log_debug("get_controlfile:Could not create file $cfile: $!", $self);
 	return undef;
     }
 
@@ -313,9 +370,9 @@ sub lpd_command {
 	alarm 0;
 
 	if ($@) {
-	    
+
 	    if ($@ =~ /timeout/) {
-		carp "Timed out sending command\n";
+		log_debug("lpd_command:Timed out sending command", $self);
 		return undef;
 	    }
 
@@ -371,7 +428,7 @@ sub lpd_init {
     }
     else {
 
-	log_debug(sprintf("lpd_init:Printer %s on Server %s not okay",
+	lpd_fatal(sprintf("lpd_init:Printer %s on Server %s not okay",
 			  $self->{printer},
 			  $self->{server}),
 		  $self);
@@ -454,11 +511,11 @@ sub lpd_datasend {
 
 	unless ($fh) {
 
-	    carp (sprintf("Could not open %s: %s\n",
-			  $lpdhash->{$type}->{"real"},
-			  $!));
+	    lpd_fatal(sprintf("Could not open %s: %s\n",
+			      $lpdhash->{$type}->{"real"},
+			      $!));
 	    return undef;
-
+	    
 	}
 
 	$blksize = (stat $fh) [11] || 16384;
@@ -539,8 +596,14 @@ sub queuestatus {
 	$self->{socket} = $sock;
     }
     else {
-	carp "Could not connect to printer: $!\n";
-	return undef;
+	
+	push(@qstatus,
+	     sprintf("%s\@%s: Could not connect to printer: $!\n",
+		     $self->{printer},
+		     $self->{server}));
+
+	return @qstatus;
+
     }
 
     # Note that we want to handle remote lpd response ourselves
@@ -569,11 +632,14 @@ sub queuestatus {
 
     if ($@) {
 
-	carp "Warning: timed out getting status\n"
-	    if ($@ =~ /timeout/);	
-
+	push (@qstatus,
+	      sprintf("%s\@%s: Timed out getting status from remote printer\n",
+		      $self->{printer},
+		      $self->{server}))
+	    if ($@ =~ /timeout/);
+	
     }
-
+    
     # Clean up
     $self->{socket}->shutdown(2);
 
@@ -605,13 +671,15 @@ sub printstring {
     # Parameter(s)
     my ($self, $str) = @_;
 
+
     # Create temporary file
     $tmpfile = get_tmpfile();
 
     $fh = new FileHandle "> $tmpfile";
 
     unless ($fh) {
-	carp "Could not open $tmpfile: $!\n";
+	lpd_fatal("Could not open $tmpfile: $!\n",
+		  $self);
 	return undef;
     }
 
@@ -659,7 +727,7 @@ sub printfile {
     my $self  = shift;
     my $pfile = shift;
 
-    log_debug("Function printfile", $self);
+    log_debug("printfile:init", $self);
 
     # Are we being called with a file?
     $self->{filename} = $pfile
@@ -668,14 +736,16 @@ sub printfile {
     # File valid?
     if ( !($self->{filename}) ||
 	 ( ! -e $self->{filename} )) {
+
+	lpd_fatal(sprintf("Given filename (%s) not valid",
+			  $self->{filename}),
+		  $self);
 	
-	carp sprintf("Given %s not valid\n",
-		     $self->{filename});
 	return undef;
 
     } 
     elsif ( uc($self->{lineconvert}) eq "YES") {
-	$dfile = nl_convert($self->{filename});
+	$dfile = nl_convert($self);
     } 
     else {
 	$dfile = $self->{filename};
@@ -691,7 +761,7 @@ sub printfile {
     log_debug(sprintf("printfile:Fake Data    File %s", $p_dfile), $self);
 
     unless ($cfile) {
-	carp "Could not create control file\n";
+	lpd_fatal("Could not create control file\n", $self);
 	return undef;
     }
 
@@ -702,7 +772,7 @@ sub printfile {
 	$self->{socket} = $sock;
     }
     else {
-	carp "Could not connect to printer: $!\n";
+	lpd_fatal("Could not connect to printer: $!\n", $self);
 	return undef;
     }
 
@@ -710,10 +780,11 @@ sub printfile {
 
     unless ($resp) {
 	
-	carp (sprintf("Printer %s on %s not ready!\n",
-		      $self->{printer},
-		      $self->{server}));
-
+	lpd_fatal(sprintf("Printer %s on %s not ready!\n",
+			  $self->{printer},
+			  $self->{server}),
+		  $self);
+	
 	return undef;
 
     }
@@ -726,7 +797,7 @@ sub printfile {
 
     unless ($resp) {
 
-	carp "Error Occured sending data to printer\n";
+	lpd_fatal("Error Occured sending data to printer\n", $self);
 	return undef;
 
     }
@@ -774,7 +845,8 @@ sub new {
 		     "server"      => "localhost",
 		     "port"        => 515,
 		     "rfc1179"     => "No",
-		     "debug"       => "No" );
+		     "debug"       => "No",
+		     "timeout"     => 15);
     
     # Parameter(s);
     my $type   = shift;
@@ -802,6 +874,8 @@ sub new {
 		  $self);
 
     }
+
+    $self->{errstr} = undef;
 
     return bless $self, $type;
 
@@ -839,6 +913,9 @@ Net::Printer - Perl extension for direct-to-lpd printing.
   $result = 
     $lineprinter->printstring("Smoke me a kipper, I'll be back for breakfast.");
 
+  # Did I get an error?
+  $errstr = $lineprinter->printerror();
+
   # Get Queue Status
   @result = $lineprinter->queuestatus();
 
@@ -871,7 +948,7 @@ Net::Printer - Perl extension for direct-to-lpd printing.
                   Default "NO"
 
     rfc1179     - [optional] Use RFC 1179 compliant source address.
-                  Default "NO".
+                  Default "NO".  See below for security implications
 
 =head2 Functions
 
@@ -883,9 +960,11 @@ a complete file Returns a 1 on success, otherwise returns a string
 containing the error.
 
 I<queuestatus> returns the current status of the print queue.  I
-recommend waiting a short period of time between printing and issueing
+recommend waiting a short period of time between printing and issuing
 a queuestatus to give your spooler a chance to do it's thing.  5
 seconds tends to work for me.
+
+I<printerror> returns the error for your own purposes.
 
 =head1 TROUBLESHOOTING
 
@@ -895,7 +974,7 @@ When printing text, if you have the infamous "stair-stepping" problem,
 try setting lineconvert to "YES".  This should, in most cases, rectify
 the problem.
 
-=head2 RFC1179 Compliance Mode
+=head2 RFC-1179 Compliance Mode
 
 RFC 1179 specifies that any program connecting to a print service must
 use a source port between 721 and 731, which are I<reserved ports>,
