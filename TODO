@@ -1,12 +1,10 @@
 To Do List for Net::Printer
 ---------------------------
 
-Last Modified: $Date: 2003/02/10 02:03:12 $
-
-* Set up printfile to accept filename as option
-
-* Re-do querystatus, printstring
+Last Modified: $Date: 2003/02/12 14:45:42 $
 
 * If connection to printer fails, try sending to lpr/lpd as last
-  resort.
+  resort.  Make this option configurable (like Failover => "Yes") for
+  example. 
+
 
