@@ -3,7 +3,7 @@
 # `make test'. After `make install' it should work as `perl test.pl'
 
 #
-# $Id: test.pl,v 1.1 2003/02/10 01:56:21 cfuhrman Exp $
+# $Id: test.pl,v 1.2 2003/02/10 18:18:40 cfuhrman Exp $
 #
 
 #########################
@@ -22,16 +22,24 @@ ok(1); # If we made it this far, we're ok.
 
 main : {
 
-    $printer = Net::Printer->new( "filename"    => "./testprint.txt",
-				  "lineconvert" => "Yes",
+    $printer = Net::Printer->new( "lineconvert" => "Yes",
 				  "server"      => "localhost",
 				  "printer"     => "lp",
 				  "debug"       => "No");
 
     ok( defined ($printer) );
 
-    ok (defined $printer->printfile() );
+    ok (defined $printer->printfile("./testprint.txt") );
 
-    print "Please check your default printer\n";
+    @status = $printer->queuestatus();
+
+    foreach $line (@status) {
+	$line =~ s/\n//;
+	print "$line\n";
+    }
+
+    ok (defined @status);
+
+    print "Please check your default printer for printout.\n";
 
 } # main
