@@ -1,6 +1,6 @@
 Net::Printer - Perl extension for direct-to-lpd printing.
 
-Last Modified: $Date: 2001/03/11 16:46:11 $
+Last Modified: $Date: 2003/02/10 18:37:56 $
 
 Perl module for directly printing to a print server/printer without
 having to create a pipe to either lpr or lp.  This essentially mimics
@@ -8,18 +8,27 @@ what the BSD LPR program does by connecting directly to the line
 printer printer port (almost always 515), and transmitting the data
 and control information to the print server.
 
-Please note that this module only talks to print servers that speak
-BSD.  It will not talk to printers using SMB or SysV unless they are
-set up as BSD printers.
+Please note that this module only communicates with the BSD Line
+Printer Daemon Protocol as described in RFC-1179
+(http://www.ietf.org/rfc/rfc1179.txt).  It does not natively speak to
+remote print servers via SMB, Apple-Talk or Netware.  Remote print
+services running lpsched, such as Sun Solaris or other Sys V-derived
+operating systems, will work so long as the print spoolers are set up
+to understand the BSD protocol.  Most modern network-capable laser
+printers, such as those manufactured by HP and LexMark, also "speak"
+BSD.
 
-This module replaces my older LinePrinter module.
+This module replaces my older LinePrinter module which should be
+considered obsolete and potentially full of security holes (not to
+mention my horrid programming ;)
 
 Installation:
 
 1) perl Makefile.PL
 2) make
 3) [optional] su
-4) make install
+4) [optional] perl test.pl
+5) make install
 
 More information can be found via perldoc.
 
@@ -32,15 +41,15 @@ This module has been tested under the following systems:
 * Sun Solaris 2.7 x86
 * UnixWARE 2.1.3
 * Cygwin 1.1 Win32 (Neil Lunn)
+* OpenBSD 3.2
 
 It should run successfully on other systems.  Feel free to notify me
 if this module works successfully under other OSes.
 
-Bugs:
+Important notice:
 
-When running under perl -w, a couple of sprintf statements will cause
-errors.  These can be safely ignored although I do plan on fixing them
-in the future.
+As of version 0.30, Net::Printer is distributed under a dual-license.
+Please see COPYRIGHT file for more information.
 
  - Chris Fuhrman
-   cfuhrman@tfcci.com
+   chris.fuhrman@tfcci.com
