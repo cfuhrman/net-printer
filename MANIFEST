@@ -1,12 +1,9 @@
 ChangeLog
-Printer.pm
+lib/Net/Printer.pm
 Makefile.PL
 MANIFEST
 COPYRIGHT
-COPYRIGHT.GNU
-COPYRIGHT.BSD
 README
-README.v30
 TODO
 test.pl
 testprint.txt

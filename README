@@ -1,6 +1,6 @@
 Net::Printer - Perl extension for direct-to-lpd printing.
 
-Last Modified: $Date: 2003/02/12 14:41:59 $
+Last Modified: $Date$
 
 Perl module for directly printing to a print server/printer without
 having to create a pipe to either lpr or lp.  This essentially mimics
@@ -16,7 +16,8 @@ services running lpsched, such as Sun Solaris or other Sys V-derived
 operating systems, will work so long as the print spoolers are set up
 to understand the BSD protocol.  Most modern network-capable laser
 printers, such as those manufactured by HP and LexMark, also "speak"
-BSD.
+BSD.  CUPS-based servers will work provided that cups-lpd has been set
+up and properly configured.
 
 This module replaces my older LinePrinter module which should be
 considered obsolete and potentially full of security holes (not to
