@@ -4,7 +4,7 @@
 #
 # Christopher M. Fuhrman <cfuhrman@tfcci.com>
 #
-# $Id: Printer.pm,v 1.3 2000/06/07 21:23:42 cfuhrman Exp $
+# $Id: Printer.pm,v 1.4 2001/03/11 16:43:33 cfuhrman Exp $
 #
 # Usage:
 #
@@ -18,6 +18,7 @@
 #
 #   AMD K6-300 running Redhat Linux 6.1 (kernel 2.2.12-20)
 #   SunOS app1 5.7 Generic_106542-02 i86pc i386 i86pc
+#   Cygwin 1.1 Win32 ix86pc
 #
 # Description:
 #
@@ -62,6 +63,7 @@
 #
 #   cfuhrman@tfcci.com
 #
+#
 ########################################################################
 package Net::Printer;
 
@@ -83,7 +85,7 @@ require AutoLoader;
 @EXPORT_OK = qw(%params);
 
 # Global Variable(s)
-$VERSION         = '0.20';
+$VERSION         = '0.21';
 
 my ($SEQNO_FILE) = '/tmp/seqno'; 
 
@@ -602,7 +604,11 @@ sub CopyFile {
     } # if $result = syswrite $sh, $buf, $len, 0 ...
   
     $len = sysread $sh, $result, 1;
-    $result = sprintf("%d", $result);
+    if ($result =~ /^(\d+\.?\d*|\.\d+)$/) {
+    	$result = sprintf("%d", $result);
+    } else {
+	$result = 0;
+    }
 
     if (uc($self->{debug}) eq "YES") {
 	print STDOUT "DEBUG: Got back :$result:\n";
@@ -666,7 +672,11 @@ sub CopyFile {
 
     undef $result;
     sysread $sh, $result, 1;
-    $result = sprintf("%d", $result);
+    if ($result =~ /^(\d+\.?\d*|\.\d+)$/) {
+    	$result = sprintf("%d", $result);
+    } else {
+	$result = 0;
+    }
 
     if (uc($self->{debug}) eq "YES") {
 	print STDOUT "DEBUG: Got back :$result:\n";
@@ -728,7 +738,7 @@ sub CreateControlFile {
     
     # Generate Hash
     $control_hash{'1H'} = $hostname;
-    $control_hash{'2P'} = getpwent();
+    $control_hash{'2P'} = ($^O eq "MSWin32") ? "user" : getpwent();
     $control_hash{'3J'} = $print_filename;
     $control_hash{'4C'} = $hostname;
     $control_hash{'5f'} = sprintf("dfA%03d%s",
