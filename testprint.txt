@@ -9,3 +9,10 @@
   This is the Net::Printer Test File.  If you can read this, then it
 	 means the Net::Printer module is working correctly.
 
+
+
+
+
+
+
+	   If you can read this, you don't need glasses ;)
