@@ -27,7 +27,7 @@ main : {
 				  "server"      => "localhost",
 				  "printer"     => "lp",
 				  "rfc1179"     => "No",
-				  "debug"       => "Yes");
+				  "debug"       => "No");
 
     ok( defined ($printer) );
 
