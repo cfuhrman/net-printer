@@ -4,7 +4,7 @@
 #
 # Christopher M. Fuhrman <cfuhrman@tfcci.com>
 #
-# $Id: Printer.pm,v 1.2 2000/06/07 21:19:53 cfuhrman Exp $
+# $Id: Printer.pm,v 1.3 2000/06/07 21:23:42 cfuhrman Exp $
 #
 # Usage:
 #
@@ -974,6 +974,9 @@ Net::Printer - Perl extension for direct-to-lpd printing.
     When printing text, if you have the infamous "stair-stepping"
     problem, try setting lineconvert to "YES".  This should, in most
     cases, rectify the problem.
+
+    Running with the -w option will cause the interpreter to complain
+    about a couple of sprintf statements.  These can be safely ignored.
 
 =head1 AUTHOR
 
