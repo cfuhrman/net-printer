@@ -4,7 +4,7 @@
 #
 # Christopher M. Fuhrman <cfuhrman@tfcci.com>
 #
-# $Id: Printer.pm,v 1.1 2000/06/06 21:08:51 cfuhrman Exp $
+# $Id: Printer.pm,v 1.2 2000/06/07 21:19:53 cfuhrman Exp $
 #
 # Usage:
 #
@@ -602,8 +602,14 @@ sub CopyFile {
     } # if $result = syswrite $sh, $buf, $len, 0 ...
   
     $len = sysread $sh, $result, 1;
+    $result = sprintf("%d", $result);
+
+    if (uc($self->{debug}) eq "YES") {
+	print STDOUT "DEBUG: Got back :$result:\n";
+    } # if uc($self->debug eq "YES"
+
     if (($len != 1) || ($result != 0)) {
-	return "Server returned length $len with result $result\n";
+	return "Server returned length $len with result :$result:\n";
     } # if (($len != 1) || ($result != 0))
 
     if (uc($self->{debug}) eq "YES") {
@@ -660,6 +666,11 @@ sub CopyFile {
 
     undef $result;
     sysread $sh, $result, 1;
+    $result = sprintf("%d", $result);
+
+    if (uc($self->{debug}) eq "YES") {
+	print STDOUT "DEBUG: Got back :$result:\n";
+    } # if uc($self->debug eq "YES"
 
     if ($result != 0) {
 	return "Printer: Error: Didn't get an ACK from server\n";
@@ -949,8 +960,9 @@ Net::Printer - Perl extension for direct-to-lpd printing.
     I<printfile> prints a specified file to the printer.  Returns a 1 on
     success, otherwise returns a string containing the error.
 
-    I<printstring> prints a specified string to the printer.  Returns
-    a 1 on success, otherwise returns a string containing the error.
+    I<printstring> prints a specified string to the printer as if it
+    were a complete file  Returns a 1 on success, otherwise returns a
+    string containing the error. 
 
     I<queuestatus> returns the current status of the print queue.  I
     recommend waiting a short period of time between printing and
@@ -972,3 +984,4 @@ C. M. Fuhrman, cfuhrman@tfcci.com
 Socket, lpr(1), lp(1), perl(1).
 
 =cut
+
