@@ -46,7 +46,7 @@ our @ISA = qw(Exporter);
 #our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw( printerror printfile printstring queuestatus );
-our $VERSION = '0.32';
+our $VERSION = '0.39.1';
 
 # Functions internal to Net::Printer
 
@@ -70,11 +70,10 @@ sub _logDebug {
 
     $msg  =~ s/\n//;
 
-    my @a = caller();
+    my @a = caller(1);
 
-    printf( "DEBUG-> %s[%d]: %s\n",
-	    $a[0],
-	    $a[2],
+    printf( "DEBUG-> %-32s: %s\n",
+	    $a[3],
 	    $msg )
 	if ( uc( $self->{debug} ) eq "YES" );
 
@@ -142,11 +141,16 @@ sub printerror {
 #
 #   none
 #
+# Returns:
+#
+#   name of temporary file
 
 sub _tmpfile {
 
-    # Local Variable(s)
-    my ($name, $fh);
+    my $name;
+    my $fh;
+
+    my $self = shift;
 
     # try new temporary filenames until we get one that didn't already
     # exist 
@@ -157,9 +161,9 @@ sub _tmpfile {
     
     return $name;
 
-} # _tmpfile
+} # _tmpfile()
 
-# Method: nl_convert
+# Method: _nlConvert
 #
 # Given a filename, will convert newline's (\n) to
 # newline-carriage-return (\n\r), output to new file, returning name
@@ -167,30 +171,29 @@ sub _tmpfile {
 #
 # Parameters:
 #
-#   self  - self object
+#   none
 #
 # Returns:
 #
-#   name of file containing strip'd text
+#   name of file containing strip'd text, undef on fail
 
-sub nl_convert {
+sub _nlConvert {
 
-    # Local Variable(s)
-    my ($nfile, $ofile, $ofh, $nfh);
-
-    # Parameter(s)
-    my ($self) = @_;
+    my $self  = shift;
 
     # Open files
-    $ofile = $self->{filename};
-    $nfile = _tmpfile();
+    my $ofile = $self->{filename};
+    my $nfile = $self->_tmpfile();
+    my $ofh   = FileHandle->new( "$ofile"   );
+    my $nfh   = FileHandle->new( "> $nfile" );
 
-    unless ($ofh = new FileHandle "$ofile") {
+
+    unless ( $ofh ) {
 	$self->_logDebug ( "Cannot open $ofile: $!\n" );
 	return undef;
     }
 
-    unless ($nfh = new FileHandle "> $nfile") {
+    unless ( $nfh ) {
 	$self->_logDebug ( "Cannot open $nfile: $!\n" );
 	return undef;
     }
@@ -208,50 +211,54 @@ sub nl_convert {
 
     return $nfile;
 
-} # nl_convert()
+} # _nlConvert()
 
-# Method: open_socket
+# Method: _socketOpen
 #
 # Opens a socket returning it
 #
 # Parameters:
 #
-#   self - self object
+#   none
 #
 # Returns:
 #
 #   socket
 
-sub open_socket {
+sub _socketOpen {
 
-    # Local Variable(s)
-    my ($sock, $p);
+    my $sock;
 
-    # Parameter(s)
     my $self = shift;
 
-    if (uc($self->{rfc1179}) eq "NO") {
+    # See if user wants rfc1179 compliance
+    if ( uc( $self->{rfc1179} ) eq "NO" ) {
+
 	$sock = IO::Socket::INET->new(Proto    => 'tcp',
 				      PeerAddr => $self->{server},
 				      PeerPort => $self->{port});
-    } else {
+	
+    } 
+    else {
 
 	# RFC 1179 says "source port be in the range 721-731"
-	foreach $p (721 .. 731) {
-	    $sock = IO::Socket::INET->new( PeerAddr => $self->{server},
-					   PeerPort => $self->{port},
-					   Proto => 'tcp',
-					   LocalPort => $p
-					   ) and last;
-	}
+	foreach my $p ( 721 .. 731 ) {
+
+	    $sock = IO::Socket::INET->new( PeerAddr  => $self->{server},
+					   PeerPort  => $self->{port},
+					   Proto     => 'tcp',
+					   LocalPort => $p ) 
+		and last;
+
+	} # Iterate through ports
 
     }
     
     return $sock;
 
-} # open_socket()
+} # _socketOpen()
 
-# Method: get_controlfile
+# Method: _fileCreate
 #
 # Purpose:
 #
@@ -259,7 +266,7 @@ sub open_socket {
 #
 # Parameters:
 #
-#   self - self
+#   none
 #   
 # Returns:
 #
@@ -269,22 +276,14 @@ sub open_socket {
 #    - name of data file
 #    - name of control file
 
-sub get_controlfile {
+sub _fileCreate {
 
-    # Local Variable(s)
-    my ($snum,
-	$cfile,
-	$cfh,
-	$key,
-	$ccode,
-	$myname,
-	%chash);
+    my %chash;
 
-    # Parameter(s)
     my $self = shift;
 
-    $myname  = hostname();
-    $snum    = int (rand 1000);
+    my $myname  = hostname();
+    my $snum    = int ( rand 1000 );
 
     # Fill up hash
     $chash{'1H'} = $myname;
@@ -299,33 +298,35 @@ sub get_controlfile {
 			   $myname);
     $chash{'7N'} = $self->{filename};
 
-    $cfile = _tmpfile();
-    $cfh   = new FileHandle "> $cfile";
+    my $cfile = $self->_tmpfile();
+    my $cfh   = new FileHandle "> $cfile";
 
     unless ($cfh) {
 
-	$self->_logDebug( "get_controlfile:Could not create file $cfile: $!" );
+	$self->_logDebug( "_fileCreate:Could not create file $cfile: $!" );
 	return undef;
 
     } # if we didn't get a proper filehandle
 
-    foreach $key ( sort keys %chash ) {
+    foreach my $key ( sort keys %chash ) {
 
-	$_     = $key;
+	$_        = $key;
+
 	s/(.)(.)/$2/g;
-	$ccode = $_;
 
-	printf $cfh ("%s%s\n",
-		     $ccode,
-		     $chash{$key});
+	my $ccode = $_;
+
+	printf $cfh ( "%s%s\n",
+		      $ccode,
+		      $chash{$key} );
 
     } # foreach $key ( sort keys %chash ) 
 
-    return ($cfile, $chash{'5f'}, $chash{'6U'});
+    return ( $cfile, $chash{'5f'}, $chash{'6U'} );
 
-} # get_controlfile()
+} # _fileCreate()
 
-# Method: lpd_command
+# Method: _lpdCommand
 #
 # Sends command to remote lpd process, returning response if
 # asked.
@@ -342,20 +343,20 @@ sub get_controlfile {
 #
 #   response of lpd command
 
-sub lpd_command {
+sub _lpdCommand {
 
-    # Local Variable(s)
-    my ($response);
+    my $response;
 
-    # Parameter(s)
-    my ($self, $cmd, $gans) = @_;
+    my $self = shift;
+    my $cmd  = shift;
+    my $gans = shift;
 
     $self->_logDebug( sprintf ( "Sending %s", 
-				$cmd) );
+				$cmd ) );
 
-    $self->{socket}->send($cmd);
+    $self->{socket}->send( $cmd );
 
-    if ($gans) {
+    if ( $gans ) {
 
 	# We wait for a response
 	eval {
@@ -363,7 +364,7 @@ sub lpd_command {
 	    local $SIG{ALRM} = sub { die "timeout\n" };
 
 	    alarm 5;
-	    $self->{socket}->recv($response, 1024)
+	    $self->{socket}->recv( $response, 1024)
 		or die "recv: $!\n";
 
 	    1;
@@ -388,39 +389,37 @@ sub lpd_command {
 
     } # if ($gans)
 
-} # lpd_command()
+} # _lpdCommand()
 
-# Method: lpd_init
+# Method: _lpdInit
 #
 # Notify remote lpd server that we're going to print returning 1 on
 # okay, undef on fail.
 #
 # Parameters:
 #
-#   self - self
+#   none
 #
 # Returns:
 #
 #   1 on success, undef on fail
 
-sub lpd_init {
+sub _lpdInit {
 
-    # Local Variable(s)
-    my ($buf,
-	$retcode);
+    my $buf;
+    my $retcode;
 
-    # Parameter(s)
-    my ($self) = shift;
+    my $self = shift;
 
     # Create and send ready
-    $buf = sprintf("%c%s\n", 2, $self->{printer});
-    $buf = lpd_command($self, $buf, 1);
-    
-    $retcode = unpack("c", $buf);
+    $buf     = sprintf( "%c%s\n", 2, $self->{printer} );
+    $buf     = $self->_lpdCommand( $buf, 1 );
+    $retcode = unpack( "c", $buf );
+
     $self->_logDebug( "Return code is $retcode" );
 
-    if (($retcode =~ /\d/) &&
-	($retcode == 0)) {
+    if ( ( $retcode =~ /\d/ ) &&
+	 ( $retcode == 0 ) ) {
 
 	$self->_logDebug( sprintf( "Printer %s on Server %s is okay",
 				   $self->{printer},
@@ -428,70 +427,65 @@ sub lpd_init {
 
 	return 1;
 
-    }
+    } # remote printer ok
     else {
 
 	$self->_lpdFatal( sprintf( "Printer %s on Server %s not okay",
 				   $self->{printer},
-				   $self->{server}) );
+				   $self->{server} ) );
 	$self->_logDebug( sprintf("Printer said %s",
-				  $buf) );
+				  $buf ) );
 
 	return undef;
 
-    }
+    } # remote printer not ok
 
-} # lpd_init
+} # _lpdInit()
 
-# Method: lpd_datasend
+# Method: _lpdSend
 #
 # Sends the control file and data file
 #
 # Parameter(s):
 #
-#   self   - self
+#   cfile   - Real Control File
+#   dfile   - Real Data File
+#   p_cfile - Fake Control File
+#   p_dfile - Fake Data File
 #
 # Returns:
 #
 #   1 on success, undef on fail
 
-sub lpd_datasend {
+sub _lpdSend {
 
-    # Local Variable(s)
-    my ($size,
-	$type,
-	$buf,
-	$len,
-	$offset,
-	$blksize,
-	$fh,
-	$resp,
-	$lpdhash);
-    
-    # Parameter(s)
-    my ($self, $cfile, $dfile, $p_cfile, $p_dfile) = @_;
-    
+    my $self    = shift;
+    my $cfile   = shift;
+    my $dfile   = shift;
+    my $p_cfile = shift;
+    my $p_dfile = shift;
+
     $self->_logDebug( "invoked ... " );
 
-    ($lpdhash) = { "3" => { "name" => $p_dfile,
-			    "real" => $dfile },
-		   "2" => { "name" => $p_cfile,
-			    "real" => $cfile }};
+    my $lpdhash = { "3" => { "name" => $p_dfile,
+			     "real" => $dfile },
+		    "2" => { "name" => $p_cfile,
+			     "real" => $cfile } };
     
-    foreach $type (keys %{$lpdhash}) {
+    foreach my $type ( keys %{$lpdhash} ) {
 
 	$self->_logDebug( sprintf("TYPE:%d:FILE:%s:",
 				  $type,
 				  $lpdhash->{$type}->{"name"} ) );
 	
 	# Send msg to lpd
-	($size) = (stat $lpdhash->{$type}->{"real"}) [7];
-	$buf    = sprintf("%c%ld %s\n",
-			  $type,                        # Xmit type
-			  $size,                        # size
-			  $lpdhash->{$type}->{"name"}); # name
+	my $size = ( stat $lpdhash->{$type}->{"real"} )[7];
+	my $buf  = sprintf( "%c%ld %s\n",
+			    $type,                         # Xmit type
+			    $size,                         # size
+			    $lpdhash->{$type}->{"name"} ); # name
 	
-	$buf    = lpd_command($self, $buf, 1);
+	$buf     = $self->_lpdCommand( $buf, 1 );
 
 	unless ($buf) {
 	    
@@ -503,9 +497,9 @@ sub lpd_datasend {
 	$self->_logDebug( sprintf( "FILE:%s:RESULT:%s",
 				   $lpdhash->{$type}->{"name"} ) );
        	
-	$fh = new FileHandle $lpdhash->{$type}->{"real"};
+	my $fh = FileHandle->new( $lpdhash->{$type}->{"real"} );
 
-	unless ($fh) {
+	unless ( $fh ) {
 
 	    $self->_lpdFatal( sprintf("Could not open %s: %s\n",
 				      $lpdhash->{$type}->{"real"},
@@ -515,8 +509,9 @@ sub lpd_datasend {
 	    
 	}
 
-	$blksize = (stat $fh) [11] || 16384;
-	while ($len = sysread $fh, $buf, $blksize) {
+	my $blksize = ( stat $fh )[11] || 16384;
+	
+	while ( my $len = sysread $fh, $buf, $blksize ) {
 
 	    unless ($len) {
 
@@ -527,16 +522,15 @@ sub lpd_datasend {
 		return undef;
 
 	    }
+	    
+	    my $offset = 0;
 
-	    $offset = 0;
-	    while ($len) {
+	    while ( $len ) {
 
-		undef $resp;
-
-		$resp    = syswrite($self->{socket},
-				    $buf,
-				    $len,
-				    $offset);
+		my $resp    = syswrite( $self->{socket},
+					$buf,
+					$len,
+					$offset );
 		
 		$len    -= $resp;
 		$offset += $resp;
@@ -548,10 +542,9 @@ sub lpd_datasend {
 	$fh->close();
 
 	# Confirm server response
-	$buf = lpd_command($self,
-			   sprintf("%c",
-				   0), 
-			   1);
+	$buf = $self->_lpdCommand( sprintf("%c",
+					   0), 
+				   1);
 	
 	$self->_logDebug( sprintf( "Confirmation status: %s",
 				   $buf) );
@@ -560,7 +553,7 @@ sub lpd_datasend {
 
     return 1;
 
-} # lpd_datasend
+} # _lpdSend()
 
 # Method: queuestatus
 #
@@ -585,7 +578,7 @@ sub queuestatus {
     my ($self) = shift;
 
     # Open Connection to remote printer
-    $sock = open_socket($self);
+    $sock = $self->_socketOpen($self);
 
     if ($sock) {
 	$self->{socket} = $sock;
@@ -602,11 +595,10 @@ sub queuestatus {
     }
 
     # Note that we want to handle remote lpd response ourselves
-    lpd_command($self,
-		sprintf("%c%s\n",
-			4,
-			$self->{printer}),
-		0);
+    $self->_lpdCommand( sprintf("%c%s\n",
+				4,
+				$self->{printer}),
+			0);
 
     # Read response from server and format
     eval {
@@ -741,7 +733,7 @@ sub printfile {
 
     } 
     elsif ( uc($self->{lineconvert}) eq "YES") {
-	$dfile = nl_convert($self);
+	$dfile = $self->_nlConvert();
     } 
     else {
 	$dfile = $self->{filename};
@@ -751,7 +743,7 @@ sub printfile {
 			      $dfile) );
 
     # Create Control File
-    ($cfile, $p_dfile, $p_cfile) = get_controlfile($self);
+    ($cfile, $p_dfile, $p_cfile) = $self->_fileCreate();
 
     $self->_logDebug( sprintf( "Real Control File %s", 
 			       $cfile   ) );
@@ -766,7 +758,7 @@ sub printfile {
     }
 
     # Open Connection to remote printer
-    $sock = open_socket($self);
+    $sock = $self->_socketOpen($self);
 
     if ($sock) {
 	$self->{socket} = $sock;
@@ -776,7 +768,7 @@ sub printfile {
 	return undef;
     }
 
-    $resp = lpd_init($self);
+    $resp = $self->_lpdInit();
 
     unless ($resp) {
 	
@@ -788,11 +780,10 @@ sub printfile {
 
     }
     
-    $resp = lpd_datasend($self,
-			 $cfile,
-			 $dfile,
-			 $p_cfile,
-			 $p_dfile);
+    $resp = $self->_lpdSend( $cfile,
+			     $dfile,
+			     $p_cfile,
+			     $p_dfile );
 
     unless ($resp) {
 
