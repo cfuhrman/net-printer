@@ -1,7 +1,7 @@
 To Do List for Net::Printer
 ---------------------------
 
-Last Modified: $Date: 2000/06/07 21:17:53 $
+Last Modified: $Date: 2000/06/07 21:20:18 $
 
 * Have Net::Printer accept multiple files without having to create a
   new printer object.
@@ -10,3 +10,5 @@ Last Modified: $Date: 2000/06/07 21:17:53 $
   it print out all in one go via some sort of printit method.
 
 * Write DESTROY method to disconnect cleanly.  Calls a close method?
+
+* Figure out why sprintf is causing perl -w to complain.
