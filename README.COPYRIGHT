@@ -1,0 +1,28 @@
+*COPYRIGHT CLARIFICATIONS*
+
+Net-Printer 0.3* versions
+
+Originally, versions 0.3* of Net::Printer were released under a
+dual-license consisting of the following:
+
+ * A BSD 3-clause license
+ * The Lesser GNU General Public License v2.1
+   (http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
+
+Due to recent issues regarding the dubious nature of dual-licensing,
+All versions marked 0.3* are now considered distributed under the
+more permissive BSD 3-clause license.  Dual-Licensing under the LGPL
+is henceforth rescinded.
+
+See
+http://www.softwarefreedom.org/resources/2007/gpl-non-gpl-collaboration.html
+as the basis of my reasoning.
+
+Net-Printer 0.2* versions
+
+All 0.2* versions remain under the GNU Lesser General Public License v2.1.
+Redistribution under version 3 of the Lesser GNU General Public
+License is strictly prohibited.
+
+ - Chris Fuhrman
+   26 May 2008
