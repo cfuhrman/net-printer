@@ -3,7 +3,7 @@
 #
 # $Id$
 #
-# Chris Fuhrman <chris.fuhrman@tfcci.com>
+# Chris Fuhrman <cfuhrman@panix.com>
 #
 # Description:
 #
@@ -46,7 +46,7 @@ our @ISA = qw(Exporter);
 #our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT  = qw( printerror printfile printstring queuestatus );
-our $VERSION = '1.04';
+our $VERSION = '1.05';
 
 # ----------------------------------------------------------------------
 # Public Methods
@@ -953,7 +953,7 @@ Net::Printer with a CUPS server.
 
 =head1 AUTHOR
 
-C. M. Fuhrman, chris.fuhrman@tfcci.com
+C. M. Fuhrman, cfuhrman@panix.com
 
 =head1 SEE ALSO
 
