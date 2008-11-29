@@ -11,16 +11,12 @@ dual-license consisting of the following:
 
 Due to recent issues regarding the dubious nature of dual-licensing,
 All versions marked 0.3* are now considered distributed under the
-more permissive BSD 2-clause license.  Dual-Licensing under the LGPL
+more permissive BSD 3-clause license.  Dual-Licensing under the LGPL
 is henceforth rescinded.
 
 See
 http://www.softwarefreedom.org/resources/2007/gpl-non-gpl-collaboration.html
 as the basis of my reasoning.
-
-As of 2008-11-29, clause three of the COPYRIGHT (a.k.a. the infamous
-advertising clause) is hereby rescinded.  This applies to all
-previously-released 0.3* versions.
 
 Net-Printer 0.2* versions
 
@@ -29,4 +25,4 @@ Redistribution under version 3 of the Lesser GNU General Public
 License is strictly prohibited.
 
  - Chris Fuhrman
-   29 November 2008
+   26 May 2008
