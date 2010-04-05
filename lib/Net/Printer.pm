@@ -133,7 +133,7 @@ sub new
         my %params = @_;
         my $self   = {};
 
-	# iterate through each variable
+        # iterate through each variable
         foreach my $var (keys %vars) {
                 if   (exists $params{$var}) { $self->{$var} = $params{$var}; }
                 else                        { $self->{$var} = $vars{$var}; }
@@ -200,24 +200,22 @@ sub printfile
         # File valid?
         if (!($self->{filename}) || (!-e $self->{filename})) {
 
-		# Bad file name
+                # Bad file name
                 $self->_lpdFatal(
                                  sprintf("Given filename (%s) not valid",
                                          $self->{filename}));
                 return undef;
 
-        }
-        elsif (uc($self->{lineconvert}) eq "YES") {
+        } elsif (uc($self->{lineconvert}) eq "YES") {
 
-		# do newline coversion
+                # do newline coversion
                 $dfile = $self->_nlConvert();
 
-        }
-        else {
+        } else {
 
-		# just set $dfile to the filename
-		$dfile = $self->{filename};
-	}
+                # just set $dfile to the filename
+                $dfile = $self->{filename};
+        }
 
         $self->_logDebug(sprintf("Real Data File    %s", $dfile));
 
@@ -244,7 +242,7 @@ sub printfile
                 return undef;
         }
 
-	# initialize LPD connection
+        # initialize LPD connection
         my $resp = $self->_lpdInit();
 
         # did we get a response?
@@ -303,7 +301,7 @@ sub printstring
         my $tmpfile = $self->_tmpfile();
         my $fh      = FileHandle->new("> $tmpfile");
 
-	# did we connect?
+        # did we connect?
         unless ($fh) {
                 $self->_lpdFatal("Could not open $tmpfile: $!\n");
                 return undef;
@@ -403,10 +401,10 @@ sub _logDebug
         my $self = shift;
         my $msg  = shift;
 
-	# strip newlines
+        # strip newlines
         $msg =~ s/\n//;
 
-	# get caller information
+        # get caller information
         my @a = caller(1);
 
         printf("DEBUG-> %-32s: %s\n", $a[3], $msg)
@@ -432,15 +430,15 @@ sub _lpdFatal
         my $self = shift;
         my $msg  = shift;
 
-	# strip newlines
+        # strip newlines
         $msg =~ s/\n//;
 
-	# get caller information and b uild error string
+        # get caller information and b uild error string
         my @a = caller();
         my $errstr = sprintf("ERROR:%s[%d]: %s", $a[0], $a[2], $msg,);
         $self->{errstr} = $errstr;
 
-	# carp it
+        # carp it
         carp "$errstr\n";
 
         return 1;
@@ -470,7 +468,7 @@ sub _tmpfile
         do { $name = tmpnam() }
             until $fh = IO::File->new($name, O_RDWR | O_CREAT | O_EXCL);
 
-	# Clean up
+        # Clean up
         $fh->close();
 
         return $name;
@@ -502,7 +500,7 @@ sub _nlConvert
         my $ofh   = FileHandle->new("$ofile");
         my $nfh   = FileHandle->new("> $nfile");
 
-	# Make sure each file opened okay
+        # Make sure each file opened okay
         unless ($ofh) {
                 $self->_logDebug("Cannot open $ofile: $!\n");
                 return undef;
@@ -520,7 +518,7 @@ sub _nlConvert
         $ofh->close();
         $nfh->close();
 
-	return $nfile;
+        return $nfile;
 
 }          # _nlConvert()
 
@@ -563,7 +561,7 @@ sub _socketOpen
                 }
         }
 
-	# return the socket
+        # return the socket
         return $sock;
 
 }          # _socketOpen()
@@ -601,18 +599,17 @@ sub _fileCreate
         $chash{'6U'} = sprintf("cfA%03d%s", $snum, $myname,);
         $chash{'7N'} = $self->{filename};
 
-
         my $cfile = $self->_tmpfile();
         my $cfh   = new FileHandle "> $cfile";
 
-	# validation
+        # validation
         unless ($cfh) {
                 $self->_logDebug(
                                 "_fileCreate:Could not create file $cfile: $!");
                 return undef;
         }          # if we didn't get a proper filehandle
 
-	# iterate through each key cleaning things up
+        # iterate through each key cleaning things up
         foreach my $key (sort keys %chash) {
                 $_ = $key;
                 s/(.)(.)/$2/g;
@@ -621,7 +618,7 @@ sub _fileCreate
 
         }
 
-	# Return what we need to
+        # Return what we need to
         return ($cfile, $chash{'5f'}, $chash{'6U'});
 
 }          # _fileCreate()
@@ -654,7 +651,7 @@ sub _lpdCommand
 
         $self->_logDebug(sprintf("Sending %s", $cmd));
 
-	# Send info
+        # Send info
         $self->{socket}->send($cmd);
 
         if ($gans) {
@@ -670,7 +667,7 @@ sub _lpdCommand
 
                 alarm 0;
 
-		# did we get an error?
+                # did we get an error?
                 if ($@) {
                         if ($@ =~ /timeout/) {
                                 $self->_logDebug("Timed out sending command");
@@ -714,20 +711,19 @@ sub _lpdInit
 
         $self->_logDebug("Return code is $retcode");
 
-	# check return code
+        # check return code
         if (($retcode =~ /\d/) && ($retcode == 0)) {
                 $self->_logDebug(
                                  sprintf("Printer %s on Server %s is okay",
                                          $self->{printer}, $self->{server}));
                 return 1;
-        }
-        else {
+        } else {
                 $self->_lpdFatal(
                                  sprintf("Printer %s on Server %s not okay",
                                          $self->{printer}, $self->{server}));
                 $self->_logDebug(sprintf("Printer said %s", $buf));
 
-		return undef;
+                return undef;
         }
 }          # _lpdInit()
 
@@ -755,7 +751,7 @@ sub _lpdSend
 
         $self->_logDebug("invoked ... ");
 
-	# build hash
+        # build hash
         my $lpdhash = {
                         "3" => {
                                  "name" => $p_dfile,
@@ -767,7 +763,7 @@ sub _lpdSend
                         },
         };
 
-	# iterate through each keytype and process
+        # iterate through each keytype and process
         foreach my $type (keys %{$lpdhash}) {
 
                 $self->_logDebug(
@@ -785,7 +781,7 @@ sub _lpdSend
 
                 $buf = $self->_lpdCommand($buf, 1);
 
-		# check bugger
+                # check bugger
                 unless ($buf) {
                         carp "Couldn't send data: $!\n";
                         return undef;
@@ -796,7 +792,7 @@ sub _lpdSend
                                          $lpdhash->{$type}->{"name"}, $buf
                                  ));
 
-		# open new file handle
+                # open new file handle
                 my $fh = FileHandle->new($lpdhash->{$type}->{"real"});
 
                 unless ($fh) {
@@ -807,13 +803,13 @@ sub _lpdSend
                         return undef;
                 }
 
-		# set blocksize
+                # set blocksize
                 my $blksize = (stat $fh)[11] || 16384;
 
-		# read from socket
+                # read from socket
                 while (my $len = sysread $fh, $buf, $blksize) {
 
-			# did we get anything back?
+                        # did we get anything back?
                         unless ($len) {
                                 next if ($! =~ /^Interrupted/);
                                 carp "Error while reading\n";
@@ -822,11 +818,10 @@ sub _lpdSend
 
                         my $offset = 0;
 
-			# write out buffer
+                        # write out buffer
                         while ($len) {
-                                my $resp =
-                                    syswrite($self->{socket},
-                                             $buf, $len, $offset);
+                                my $resp = syswrite($self->{socket},
+                                                    $buf, $len, $offset);
                                 next unless $resp;
                                 $len -= $resp;
                                 $offset += $resp;
@@ -834,7 +829,7 @@ sub _lpdSend
                         }
                 }
 
-		# Clean up
+                # Clean up
                 $fh->close();
 
                 # Confirm server response
@@ -864,7 +859,6 @@ sub DESTROY
         $self->{socket}->shutdown(2) if ($self->{socket});
 
 }          # DESTROY
-
 
 1;
 
