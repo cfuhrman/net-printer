@@ -1,3 +1,4 @@
+
 =head1 NAME
 
 Net::Printer - Perl extension for direct-to-lpd printing.
@@ -14,6 +15,7 @@ Net::Printer - Perl extension for direct-to-lpd printing.
                                   port        => 515,
                                   lineconvert => "YES"
                                   );
+
   # Print the file
   $result = $lineprinter->printfile();
 
@@ -36,12 +38,13 @@ Perl module for directly printing to a print server/printer without
 having to create a pipe to either lpr or lp.  This essentially mimics
 what the BSD LPR program does by connecting directly to the line
 printer printer port (almost always 515), and transmitting the data
-and control information to the print server. 
+and control information to the print server.
 
 Please note that this module only talks to print servers that speak
-BSD.  It will not talk to printers using SMB or SysV unless they are
-set up as BSD printers.  CUPS users will need to set up B<cups-lpd> to
-provide legacy access. ( See L</"Using Net::Printer with CUPS"> )
+BSD.  It will not talk to printers using SMB, SysV, or IPP unless they
+are set up as BSD printers.  CUPS users will need to set up
+B<cups-lpd> to provide legacy access. ( See L</"Using Net::Printer
+with CUPS"> )
 
 =cut
 
@@ -73,40 +76,40 @@ our @EXPORT = qw( printerror printfile printstring queuestatus );
 
 Constructor returning Net::Printer object
 
-B<Parameters>
+=head3 Parameters
 
 A hash with the following keys:
 
 =over
 
-=item filename
+=item  * filename
 
 [optional] absolute path to the file you wish to print.
 
-=item printer
+=item  * printer
 
 [default: "lp"] Name of the printer you wish to print to.
 
-=item server
+=item  * server
 
 [default: "localhost"] Name of the printer server
 
-=item port
+=item  * port
 
 [default: 515] The port you wish to connect to
 
-=item lineconvert
+=item  * lineconvert
 
 [default: "NO"] Perform LF -> LF/CR translation
 
-=item rfc1179
+=item  * rfc1179
 
 [default: "NO"] Use RFC 1179 compliant source address.  Default
 "NO". see L<"RFC-1179 Compliance Mode and Security Implications">.
 
 =back
 
-B<Returns>
+=head3 Returns
 
 The bless'd object
 
@@ -146,7 +149,7 @@ sub new
 
 Getter for error string, if any.
 
-B<Returns>
+=head3 Returns
 
 String containing error text, if any.  Undef otherwise.
 
@@ -165,7 +168,7 @@ sub printerror
 
 Transmits the contents of the specified file to the print server
 
-B<Parameters>
+=head3 Parameters
 
 =over
 
@@ -175,7 +178,7 @@ Path to file to print
 
 =back
 
-B<Returns>
+=head3 Returns
 
 1 on success, undef on fail
 
@@ -274,7 +277,7 @@ sub printfile
 Prints the given string to the printer.  Note that each string given
 to this method will be treated as a separate print job.
 
-B<Parameters>
+=head3 Parameters
 
 =over
 
@@ -284,7 +287,7 @@ String to send to print queue
 
 =back
 
-B<Returns>
+=head3 Returns
 
 1 on succes, undef on fail
 
@@ -322,7 +325,7 @@ sub printstring
 
 Retrives status information from print server
 
-B<Returns>
+=head3 Returns
 
 Array containing queue status
 
