@@ -1,27 +1,56 @@
-########################################################################
-# File: Net::Printer
-#
-# $Id$
-#
-# Chris Fuhrman <cfuhrman@panix.com>
-#
-# Description:
-#
-#   Perl module which acts as an interface to an lpd/lpsched process
-#   without having to build a pipe to lpr or lp.  The goal of this
-#   module is to provide a robust way of printing to a line printer
-#   and provide immediate feedback as to if it were successfully
-#   spooled or not.
-#
-# Please see the COPYRIGHT file for important information on
-# distribution terms
-#
-########################################################################
+=head1 NAME
+
+Net::Printer - Perl extension for direct-to-lpd printing.
+
+=head1 SYNOPSIS
+
+  use Net::Printer;
+
+  # Create new Printer Object
+  $lineprinter = new Net::Printer(
+                                  filename    => "/home/jdoe/myfile.txt",
+                                  printer     => "lp",
+                                  server      => "printserver",
+                                  port        => 515,
+                                  lineconvert => "YES"
+                                  );
+  # Print the file
+  $result = $lineprinter->printfile();
+
+  # Optionally print a file
+  $result = $lineprinter->printfile("/home/jdoe/myfile.txt");
+
+  # Print a string
+  $result =
+    $lineprinter->printstring("Smoke me a kipper, I'll be back for breakfast.");
+
+  # Did I get an error?
+  $errstr = $lineprinter->printerror();
+
+  # Get Queue Status
+  @result = $lineprinter->queuestatus();
+
+=head1 DESCRIPTION
+
+Perl module for directly printing to a print server/printer without
+having to create a pipe to either lpr or lp.  This essentially mimics
+what the BSD LPR program does by connecting directly to the line
+printer printer port (almost always 515), and transmitting the data
+and control information to the print server. 
+
+Please note that this module only talks to print servers that speak
+BSD.  It will not talk to printers using SMB or SysV unless they are
+set up as BSD printers.  CUPS users will need to set up B<cups-lpd> to
+provide legacy access. ( See L</"Using Net::Printer with CUPS"> )
+
+=cut
 
 use strict;
 use warnings;
 
 package Net::Printer;
+
+our @ISA = qw( Exporter );
 
 use 5.006;
 
@@ -31,31 +60,98 @@ use IO::Socket;
 use POSIX qw ( tmpnam );
 use Sys::Hostname;
 
-require Exporter;
+our $VERSION = '1.10';
 
-# use AutoLoader qw(AUTOLOAD);
-our @ISA = qw(Exporter);
-
-# Items to export into callers namespace by default. Note: do not export
-# names by default without a very good reason. Use EXPORT_OK instead.
-# Do not simply export all your public functions/methods/constants.
-# This allows declaration        use Net::Printer ':all';
-# If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
-# will save memory.
-#our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-our @EXPORT  = qw( printerror printfile printstring queuestatus );
-our $VERSION = '1.05';
+# Exported functions
+our @EXPORT = qw( printerror printfile printstring queuestatus );
 
 # ----------------------------------------------------------------------
-# Public Methods
-# ----------------------------------------------------------------------
-# Method: printerror
-#
-# Prints contents of errstr
-#
-# Parameters:
-#
-#   self - self object
+
+=head1 METHODS
+
+=head2 new
+
+Constructor returning Net::Printer object
+
+B<Parameters>
+
+A hash with the following keys:
+
+=over
+
+=item filename
+
+[optional] absolute path to the file you wish to print.
+
+=item printer
+
+[default: "lp"] Name of the printer you wish to print to.
+
+=item server
+
+[default: "localhost"] Name of the printer server
+
+=item port
+
+[default: 515] The port you wish to connect to
+
+=item lineconvert
+
+[default: "NO"] Perform LF -> LF/CR translation
+
+=item rfc1179
+
+[default: "NO"] Use RFC 1179 compliant source address.  Default
+"NO". see L<"RFC-1179 Compliance Mode and Security Implications">.
+
+=back
+
+B<Returns>
+
+The bless'd object
+
+=cut
+
+sub new
+{
+
+        my (%vars) = ("filename"    => "",
+                      "lineconvert" => "No",
+                      "printer"     => "lp",
+                      "server"      => "localhost",
+                      "port"        => 515,
+                      "rfc1179"     => "No",
+                      "debug"       => "No",
+                      "timeout"     => 15,
+        );
+
+        # Parameter(s);
+        my $type   = shift;
+        my %params = @_;
+        my $self   = {};
+
+	# iterate through each variable
+        foreach my $var (keys %vars) {
+                if   (exists $params{$var}) { $self->{$var} = $params{$var}; }
+                else                        { $self->{$var} = $vars{$var}; }
+        }
+
+        $self->{errstr} = undef;
+
+        return bless $self, $type;
+
+}          # new
+
+=head2 printerror
+
+Getter for error string, if any.
+
+B<Returns>
+
+String containing error text, if any.  Undef otherwise.
+
+=cut
+
 sub printerror
 {
 
@@ -65,20 +161,26 @@ sub printerror
 
 }          # printerror()
 
-# Method: printfile
-#
-# Purpose:
-#
-#   Connects to a specified remote print process and transmits a print
-#   job.
-#
-# Parameters:
-#
-#   self - self
-#
-# Returns:
-#
-#   1 on success, undef on fail
+=head2 printfile
+
+Transmits the contents of the specified file to the print server
+
+B<Parameters>
+
+=over
+
+=item  * file
+
+Path to file to print
+
+=back
+
+B<Returns>
+
+1 on success, undef on fail
+
+=cut
+
 sub printfile
 {
         my $dfile;
@@ -167,17 +269,27 @@ sub printfile
 
 }          # printfile()
 
-# Method: printstring
-#
-# Takes a string and prints it.
-#
-# Parameters:
-#
-#   str  - string to print
-#
-# Returns:
-#
-#   1 on success, undef on fail
+=head2 printstring
+
+Prints the given string to the printer.  Note that each string given
+to this method will be treated as a separate print job.
+
+B<Parameters>
+
+=over
+
+=item  * string
+
+String to send to print queue
+
+=back
+
+B<Returns>
+
+1 on succes, undef on fail
+
+=cut
+
 sub printstring
 {
 
@@ -206,18 +318,16 @@ sub printstring
 
 }          # printstring()
 
-# Method: queuestatus
-#
-# Retrieves status information from a specified printer returning
-# output in an array.
-#
-# Parameters:
-#
-#   None.
-#
-# Returns:
-#
-#   Array containing queue status
+=head2 queuestatus
+
+Retrives status information from print server
+
+B<Returns>
+
+Array containing queue status
+
+=cut
+
 sub queuestatus
 {
 
@@ -736,6 +846,7 @@ sub _lpdSend
 # ----------------------------------------------------------------------
 # Standard publically accessible method
 # ----------------------------------------------------------------------
+
 # Method: DESTROY
 #
 # called when module destroyed
@@ -751,143 +862,12 @@ sub DESTROY
 
 }          # DESTROY
 
-# Method: new
-#
-# called when module initialized
-#
-sub new
-{
-
-        my (%vars) = ("filename"    => "",
-                      "lineconvert" => "No",
-                      "printer"     => "lp",
-                      "server"      => "localhost",
-                      "port"        => 515,
-                      "rfc1179"     => "No",
-                      "debug"       => "No",
-                      "timeout"     => 15,
-        );
-
-        # Parameter(s);
-        my $type   = shift;
-        my %params = @_;
-        my $self   = {};
-
-	# iterate through each variable
-        foreach my $var (keys %vars) {
-                if   (exists $params{$var}) { $self->{$var} = $params{$var}; }
-                else                        { $self->{$var} = $vars{$var}; }
-        }
-
-        $self->{errstr} = undef;
-
-        return bless $self, $type;
-
-}          # new
 
 1;
-__END__
-# Below is stub documentation for your module. You better edit it!
-
-=head1 NAME
-
-Net::Printer - Perl extension for direct-to-lpd printing.
-
-=head1 SYNOPSIS
-
-  use Net::Printer;
-
-  # Create new Printer Object
-  $lineprinter = new Net::Printer(
-                                  filename    => "/home/jdoe/myfile.txt",
-                                  printer     => "lp",
-                                  server      => "printserver",
-                                  port        => 515,
-                                  lineconvert => "YES"
-                                  );
-  # Print the file
-  $result = $lineprinter->printfile();
-
-  # Optionally print a file
-  $result = $lineprinter->printfile("/home/jdoe/myfile.txt");
-
-  # Print a string
-  $result =
-    $lineprinter->printstring("Smoke me a kipper, I'll be back for breakfast.");
-
-  # Did I get an error?
-  $errstr = $lineprinter->printerror();
-
-  # Get Queue Status
-  @result = $lineprinter->queuestatus();
-
-=head1 DESCRIPTION
-
-Perl module for directly printing to a print server/printer without
-having to create a pipe to either lpr or lp.  This essentially mimics
-what the BSD LPR program does by connecting directly to the line
-printer printer port (almost always 515), and transmitting the data
-and control information to the print server. 
-
-Please note that this module only talks to print servers that speak
-BSD.  It will not talk to printers using SMB or SysV unless they are
-set up as BSD printers.  CUPS users will need to set up B<cups-lpd> to
-provide legacy access. ( See L</"Using Net::Printer with CUPS"> )
-
-=head2 Parameters
-
-
-=over 10
-
-=item filename
-
-[optional] absolute path to the file you wish to print.
-
-=item printer
-
-[optional] Name of the printer you wish to print to.
-Default "lp".
-
-=item server
-
-[optional] Name of the server that is running /lpsched.  Default
-"localhost".
-
-=item port
-
-[optional] The port you wish to connect to.  Default "515".
-
-=item lineconvert
-
-[optional] Perform LF -> LF/CR translation.  Default "NO"
-
-=item rfc1179
-
-[optional] Use RFC 1179 compliant source address.  Default "NO".  See
-below for security implications.
-
-=back
-
-=head2 Functions
-
-I<printfile> prints a specified file to the printer.  Returns a 1 on
-success, otherwise returns a string containing the error.
-
-I<printstring> prints a specified string to the printer as if it were
-a complete file Returns a 1 on success, otherwise returns a string
-containing the error.
-
-I<queuestatus> returns the current status of the print queue.  I
-recommend waiting a short period of time between printing and issuing
-a queuestatus to give your spooler a chance to do it's thing.  5
-seconds tends to work for me.
-
-I<printerror> returns the error for your own purposes.
 
 =head1 TROUBLESHOOTING
 
 =head2 Stair Stepping Problem
-
 
 When printing text, if you have the infamous "stair-stepping" problem,
 try setting lineconvert to "YES".  This should, in most cases, rectify
@@ -903,16 +883,13 @@ possible!>
 
 =head2 Using Net::Printer with CUPS
 
-Net::Printer, by itself, does not speak to printers running the CUPS
-protocol.  In order to provide support for legacy clients, most modern CUPS
-distributions include the B<cups-lpd> mini-server which can be set up
+Net::Printer does not natively speak to printers running CUPS (which
+uses the IPP protocol).  In order to provide support for legacy
+clients, CUPS provides the B<cups-lpd> mini-server which can be set up
 to run out of either B<inetd> or B<xinetd> depending on preference.
 You will need to set up this functionality in order to use
-Net::Printer with a CUPS server.
-
-=head1 AUTHOR
-
-C. M. Fuhrman, cfuhrman@panix.com
+Net::Printer with CUPS server.  Consult your system documentation as
+to how to do this.
 
 =head1 SEE ALSO
 
@@ -920,5 +897,26 @@ L<cups-lpd|cups-lpd/8>, L<lp|lp/1>, L<lpr|lpr/1>, L<perl|perl/1>
 
 RFC 1179 L<http://www.ietf.org/rfc/rfc1179.txt?number=1179>
 
+=head1 AUTHOR
+
+Christopher M. Fuhrman C<< <cfuhrman at panix.com> >>
+
+=head1 REVISION INFORMATION
+
+  $Id$
+
+=head1 COPYRIGHT & LICENSE
+
+Copyright (c) 2000-2004 Christopher M. Fuhrman, 
+All rights reserved.
+
+This program is free software licensed under the...
+
+	The BSD License
+
+The full text of the license can be found in the
+LICENSE file included with this module.
+
 =cut
 
+__END__
