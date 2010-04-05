@@ -2,7 +2,7 @@ ChangeLog
 lib/Net/Printer.pm
 Makefile.PL
 MANIFEST
-COPYRIGHT
+LICENSE
 README
 TODO
 test.pl
