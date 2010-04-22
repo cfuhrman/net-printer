@@ -15,33 +15,35 @@ BEGIN { plan tests => 1 }
 use lib "lib";
 use Net::Printer;
 
-ok(1);          # If we made it this far, we're ok.
+ok(1);    # If we made it this far, we're ok.
 
 #########################
 # Insert your test code below, the Test module is use()ed here so read
 # its man page ( perldoc Test ) for help writing this test script.
 main:
-{
-        $printer = Net::Printer->new("lineconvert" => "Yes",
-                                     "server"      => "localhost",
-                                     "printer"     => "lp",
-                                     "rfc1179"     => "No",
-                                     "debug"       => "No"
-        );
+  {
+    $printer = Net::Printer->new(
+                                 "lineconvert" => "Yes",
+                                 "server"      => "localhost",
+                                 "printer"     => "lp",
+                                 "rfc1179"     => "No",
+                                 "debug"       => "No"
+                                );
 
-        ok(defined($printer));
-        ok(defined $printer->printfile("./testprint.txt"));
+    ok(defined($printer));
+    ok(defined $printer->printfile("./testprint.txt"));
 
-        @status = $printer->queuestatus();
+    @status = $printer->queuestatus();
 
-        foreach $line (@status) {
-                $line =~ s/\n//;
-                print "$line\n";
-        }
+    foreach $line (@status)
+      {
+        $line =~ s/\n//;
+        print "$line\n";
+      }
 
-        ok(defined @status);
+    ok(defined @status);
 
-# Uncomment this if you want to test printstring
-# ok (defined $printer->printstring("This is a test of printstring function\n"));
-        print "Please check your default printer for printout.\n";
-}          # main
+    # Uncomment this if you want to test printstring
+    # ok (defined $printer->printstring("This is a test of printstring function\n"));
+    print "Please check your default printer for printout.\n";
+  }    # main
