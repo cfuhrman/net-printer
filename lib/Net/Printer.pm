@@ -898,10 +898,6 @@ RFC 1179 L<http://www.ietf.org/rfc/rfc1179.txt?number=1179>
 
 Christopher M. Fuhrman C<< <cfuhrman at panix.com> >>
 
-=head1 REVISION INFORMATION
-
-  $Id$
-
 =head1 COPYRIGHT & LICENSE
 
 Copyright (c) 2000-2004 Christopher M. Fuhrman, 
