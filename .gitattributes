@@ -1,0 +1,3 @@
+*.pm ident
+*.t ident
+README* ident
