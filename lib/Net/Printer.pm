@@ -111,7 +111,7 @@ A hash with the following keys:
 
 =head3 Returns
 
-The bless'd object
+The blessed object
 
 =cut
 
@@ -448,7 +448,7 @@ sub _lpdFatal
 # Preloaded methods go here.
 # Method: _tmpfile
 #
-# Creates temporary file returning it's name.
+# Creates temporary file returning its name.
 #
 # Parameters:
 #
