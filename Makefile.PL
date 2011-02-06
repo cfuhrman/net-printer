@@ -1,16 +1,34 @@
-use ExtUtils::MakeMaker;
+# -*- mode: cperl -*-
 
 #
 # $Id$
 #
 
+use strict;
+use warnings;
+use ExtUtils::MakeMaker;
+
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
-    'NAME'		=> 'Net::Printer',
-    'VERSION_FROM'	=> 'lib/Net/Printer.pm', # finds $VERSION
-    'PREREQ_PM'		=> {}, # e.g., Module::Name => 1.1
-    ($] >= 5.006 ?    ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM => 'lib/Net/Printer.pm', # retrieve abstract from module
-       AUTHOR     => 'Chris Fuhrman <cfuhrman@panix.com>') : ()),
+        NAME          => 'Net::Printer',
+        AUTHOR        => 'Christopher M. Fuhrman <cfuhrman@panix.com>',
+        LICENSE       => 'bsd',
+        VERSION_FROM  => 'lib/Net/Printer.pm',
+        ABSTRACT_FROM => 'lib/Net/Printer.pm',
+        META_MERGE    => {
+                'resources' => {
+                       bugtracker =>
+"http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Net-Printer",
+                       repository => "https://github.com/cfuhrman/net-printer",
+                       license =>
+"https://github.com/cfuhrman/net-printer/raw/master/LICENSE"
+                },
+        },
+        dist => {
+                  COMPRESS => 'gzip -9f',
+                  SUFFIX   => 'gz',
+        },
+        clean => { FILES => 'Net-Printer-*' },
 );
+
