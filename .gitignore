@@ -1,0 +1,6 @@
+*.bak
+*.tdy
+*~
+Makefile.old
+:2eDS_Store
+.AppleDouble
