@@ -63,7 +63,7 @@ use IO::Socket;
 use POSIX qw ( tmpnam );
 use Sys::Hostname;
 
-our $VERSION = '1.10';
+our $VERSION = '1.11';
 
 # Exported functions
 our @EXPORT = qw( printerror printfile printstring queuestatus );
