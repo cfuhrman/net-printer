@@ -465,8 +465,13 @@ sub _tmpfile
 
         # try new temporary filenames until we get one that didn't already
         # exist
-        do { $name = tmpnam() }
-            until $fh = IO::File->new($name, O_RDWR | O_CREAT | O_EXCL);
+        do {
+                $name =
+                    ($^O ne "MSWin32")
+                    ? tmpnam()
+                    : sprintf 'C:\Windows\Temp\Net-Printer-file-%05d.txt',
+                    int(rand(99999));
+        } until $fh = IO::File->new($name, O_RDWR | O_CREAT | O_EXCL);
 
         # Clean up
         $fh->close();
