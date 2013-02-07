@@ -445,7 +445,6 @@ sub _lpdFatal
 
 }          # _lpdFatal()
 
-# Preloaded methods go here.
 # Method: _tmpfile
 #
 # Creates temporary file returning its name.
