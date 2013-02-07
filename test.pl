@@ -1,47 +1,55 @@
 #!/usr/bin/perl -w
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl test.pl'
-#
-# $Id$
-#
 
-#########################
-# change 'tests => 1' to 'tests => last_test_to_print';
-
-use Test;
-
-BEGIN { plan tests => 1 }
+use strict;
+use warnings;
 
 use lib "lib";
+
+use IO::Socket;
 use Net::Printer;
+use Test::More;
 
-ok(1);          # If we made it this far, we're ok.
+# Define some handy constants
+use constant LPD_SERVER  => $ENV{LPD_SERVER}  || "localhost";
+use constant LPD_PRINTER => $ENV{LPD_PRINTER} || "lp";
+use constant LPD_PORT    => $ENV{LPD_PORT}    || 515;
 
-#########################
-# Insert your test code below, the Test module is use()ed here so read
-# its man page ( perldoc Test ) for help writing this test script.
-main:
 {
-        $printer = Net::Printer->new("lineconvert" => "Yes",
-                                     "server"      => "localhost",
-                                     "printer"     => "lp",
-                                     "rfc1179"     => "No",
-                                     "debug"       => "No"
+
+        # First check to see if we can connect to given print server
+        my $sock = IO::Socket::INET->new(Proto    => 'tcp',
+                                         PeerAddr => LPD_SERVER,
+                                         PeerPort => LPD_PORT
+        );
+
+        if (!$sock) {
+                plan skip_all =>
+                    sprintf("Unable to connect to %s port %d.  Aborting",
+                            LPD_SERVER, LPD_PORT);
+        } else {
+                plan tests => 3;
+        }
+
+        my $printer = Net::Printer->new(lineconvert => "Yes",
+                                        server      => LPD_SERVER,
+                                        printer     => LPD_PRINTER,
+                                        port        => LPD_PORT,
+                                        rfc1179     => "No",
+                                        debug       => "No"
         );
 
         ok(defined($printer));
         ok(defined $printer->printfile("./testprint.txt"));
 
-        @status = $printer->queuestatus();
+        my @status = $printer->queuestatus();
 
-        foreach $line (@status) {
+        foreach my $line (@status) {
                 $line =~ s/\n//;
                 print "$line\n";
         }
 
-        ok(defined @status);
+        ok(scalar @status > 0);
 
-# Uncomment this if you want to test printstring
-# ok (defined $printer->printstring("This is a test of printstring function\n"));
         print "Please check your default printer for printout.\n";
-}          # main
+
+}
