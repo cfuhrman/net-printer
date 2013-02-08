@@ -58,9 +58,9 @@ our @ISA = qw( Exporter );
 use 5.006;
 
 use Carp;
+use File::Temp;
 use FileHandle;
 use IO::Socket;
-use POSIX qw ( tmpnam );
 use Sys::Hostname;
 
 our $VERSION = '1.11';
@@ -458,24 +458,16 @@ sub _lpdFatal
 #   name of temporary file
 sub _tmpfile
 {
-        my $name;
-        my $fh;
+
         my $self = shift;
 
-        # try new temporary filenames until we get one that didn't already
-        # exist
-        do {
-                $name =
-                    ($^O ne "MSWin32")
-                    ? tmpnam()
-                    : sprintf 'C:\Windows\Temp\Net-Printer-file-%05d.txt',
-                    int(rand(99999));
-        } until $fh = IO::File->new($name, O_RDWR | O_CREAT | O_EXCL);
+        my $fh    = File::Temp->new();
+        my $fname = $fh->filename;
 
         # Clean up
         $fh->close();
 
-        return $name;
+        return $fname
 
 }          # _tmpfile()
 
