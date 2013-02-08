@@ -693,17 +693,17 @@ sub _lpdCommand
 #   1 on success, undef on fail
 sub _lpdInit
 {
-        my $buf;
-        my $retcode;
-
         my $self = shift;
+
+        my $buf      = "";
+        my $retcode  = 1;
 
         $self->_logDebug("invoked ... ");
 
         # Create and send ready
-        $buf = sprintf("%c%s\n", 2, $self->{printer});
+        $buf = sprintf("%c%s\n", 2, $self->{printer}) || "";
         $buf = $self->_lpdCommand($buf, 1);
-        $retcode = unpack("c", $buf);
+        $retcode = unpack("c", $buf || 1);
 
         $self->_logDebug("Return code is $retcode");
 
@@ -717,7 +717,7 @@ sub _lpdInit
                 $self->_lpdFatal(
                                  sprintf("Printer %s on Server %s not okay",
                                          $self->{printer}, $self->{server}));
-                $self->_logDebug(sprintf("Printer said %s", $buf));
+                $self->_logDebug(sprintf("Printer said %s", $buf || "nothing"));
 
                 return undef;
         }
