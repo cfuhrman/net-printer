@@ -900,7 +900,7 @@ Christopher M. Fuhrman C<< <cfuhrman at panix.com> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright (c) 2000-2004 Christopher M. Fuhrman, 
+Copyright (c) 2000-2005,2008,2011,2013 Christopher M. Fuhrman, 
 All rights reserved.
 
 This program is free software licensed under the...
