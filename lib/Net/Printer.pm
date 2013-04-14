@@ -695,8 +695,8 @@ sub _lpdInit
 {
         my $self = shift;
 
-        my $buf      = "";
-        my $retcode  = 1;
+        my $buf     = "";
+        my $retcode = 1;
 
         $self->_logDebug("invoked ... ");
 
