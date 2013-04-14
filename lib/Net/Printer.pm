@@ -63,7 +63,7 @@ use FileHandle;
 use IO::Socket;
 use Sys::Hostname;
 
-our $VERSION = '1.11';
+our $VERSION = '1.12';
 
 # Exported functions
 our @EXPORT = qw( printerror printfile printstring queuestatus );
