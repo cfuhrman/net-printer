@@ -892,7 +892,7 @@ RFC 1179 L<http://www.ietf.org/rfc/rfc1179.txt?number=1179>
 
 =head1 AUTHOR
 
-Christopher M. Fuhrman C<< <cfuhrman at panix.com> >>
+Christopher M. Fuhrman C<< <cfuhrman at pobox.com> >>
 
 =head1 REVISION INFORMATION
 

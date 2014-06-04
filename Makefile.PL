@@ -12,7 +12,7 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
         NAME          => 'Net::Printer',
-        AUTHOR        => 'Christopher M. Fuhrman <cfuhrman@panix.com>',
+        AUTHOR        => 'Christopher M. Fuhrman <cfuhrman@pobox.com>',
         LICENSE       => 'bsd',
         VERSION_FROM  => 'lib/Net/Printer.pm',
         ABSTRACT_FROM => 'lib/Net/Printer.pm',
